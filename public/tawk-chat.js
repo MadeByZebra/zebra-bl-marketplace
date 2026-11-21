@@ -4,6 +4,25 @@
   const api = window.Tawk_API = window.Tawk_API || {};
   window.Tawk_LoadStart = new Date();
   const supportEmail = 'zebrablshopofficial@gmail.com';
+  // A mailto link opens the visitor's configured email app or webmail handler.
+  // It fills the recipient and a useful draft, but NEVER sends automatically.
+  const supportSubject = "Zebra's Shop | Support Request";
+  const supportBody = [
+    'Hello Zebra Support,',
+    '',
+    'I need help with:',
+    '',
+    'Product name (if applicable):',
+    'Order reference (if available):',
+    'What happened:',
+    '',
+    'Please do not include passwords, login codes or payment card details.',
+    '',
+    'Thank you.'
+  ].join('\\r\\n');
+  const supportComposeLink = 'mailto:' + supportEmail
+    + '?subject=' + encodeURIComponent(supportSubject)
+    + '&body=' + encodeURIComponent(supportBody);
   let loaded = false;
   let requested = false;
   let opening = false;
@@ -78,7 +97,7 @@
       else if (loaded) showChat();
       else {
         // Never leave visitors stranded if the external chat is unavailable.
-        if (requested) window.location.href = 'mailto:' + supportEmail + '?subject=Zebra%27s%20Shop%20support';
+        if (requested) window.location.href = supportComposeLink;
         else {
           requested = true;
           setLabel('CONNECTING…');
@@ -94,9 +113,9 @@
     // for AI Assist, visitor monitoring and manual takeover in its inbox.
     const emailLink = document.createElement('a');
     emailLink.className = 'zebra-support-email';
-    emailLink.href = 'mailto:' + supportEmail + '?subject=Zebra%27s%20Shop%20support';
+    emailLink.href = supportComposeLink;
     emailLink.setAttribute('aria-label', 'Email Zebra Support');
-    emailLink.title = 'Email Zebra Support';
+    emailLink.title = 'Open a ready-to-send email in your default mail app';
     emailLink.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg><span>EMAIL SUPPORT</span>';
     document.body.appendChild(emailLink);
   }
