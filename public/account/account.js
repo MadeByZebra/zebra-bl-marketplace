@@ -120,6 +120,23 @@
       row.append(info);
       if(product.testOnly){
         row.append(element('span','TEST PASSED','account-status'));
+        if(typeof order.session_id==='string'&&/^cs_test_[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
+          const emailButton=element('button','Verify / email test confirmation','btn');
+          emailButton.type='button';
+          emailButton.addEventListener('click',async()=>{
+            emailButton.disabled=true;
+            alert('Checking this payment with Stripe…');
+            try{
+              const data=await api('/api/confirm',{method:'POST',
+                body:JSON.stringify({session_id:order.session_id})});
+              alert(data.paid
+                ? 'Test payment verified. If a confirmation was not already sent, email delivery was attempted.'
+                : 'Payment has not been verified; no confirmation was sent.',!data.paid);
+            }catch(error){alert(error.message,true);}
+            finally{emailButton.disabled=false;}
+          });
+          row.append(emailButton);
+        }
       }else if(Number(order.amount)>0&&typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
         const receipt=link('/api/receipt/'+encodeURIComponent(order.session_id),'Stripe receipt ↗');
         receipt.target='_blank';
