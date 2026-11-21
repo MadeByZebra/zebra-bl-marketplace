@@ -213,3 +213,62 @@ a,button,[role=button]{-webkit-tap-highlight-color:transparent}
 @media(prefers-reduced-motion:reduce){.zebra-v8 *, .zebra-v8 *:before,.zebra-v8 *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
  .zebra-v8 .reveal:not(.in){opacity:1!important;filter:none!important;transform:none!important}
  .zebra-v8 .card:hover,.zebra-v8 .product-card:hover,.zebra-v8 .bundle-card:hover{transform:none!important}}
+
+/* interactive studio window details */
+.zebra-v8 .window-side button.side-option{width:100%;border:1px solid transparent!important;background:transparent;color:#a5a5a5;text-align:left;cursor:pointer}
+.zebra-v8 .window-side button.side-option.selected{background:#1b1b1b!important;color:#fafafa!important}
+.zebra-v8 .window-side a.side-option{border:1px solid transparent}
+.zebra-v8 .studio-preview-panel[hidden]{display:none!important}
+.zebra-v8 .studio-preview-panel:not([hidden]){display:block;animation:studioPanelIn .34s cubic-bezier(.2,.7,.2,1)}
+@keyframes studioPanelIn{from{opacity:.55;transform:translateY(6px)}to{opacity:1;transform:none}}
+.zebra-v8 .studio-body{min-height:485px}
+.zebra-v8 .studio-body>.studio-preview-panel{min-height:400px}
+.zebra-v8 .studio-body .visual-content-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px!important}
+.zebra-v8 .studio-body .visual-content-top h3{margin:6px 0 7px!important}
+.zebra-v8 .studio-mini-btn{align-self:center;display:inline-flex;align-items:center;justify-content:center;min-height:35px;border:1px solid #393939;border-radius:7px;background:#171717;color:#dedede;padding:0 12px;font:500 10px Geist;transition:background .28s,border .28s,transform .28s;white-space:nowrap}
+.zebra-v8 .studio-mini-btn:hover{background:#292929;border-color:#777;transform:translateY(-2px)}
+.zebra-v8 .studio-columns{display:grid;grid-template-columns:1.12fr 1fr;gap:12px;margin-top:16px}
+.zebra-v8 .studio-surface{min-width:0;background:#0b0b0b;border:1px solid #292929;border-radius:9px;overflow:hidden}
+.zebra-v8 .studio-surface-head{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:14px 15px;border-bottom:1px solid #292929}
+.zebra-v8 .studio-surface-head strong{font:600 12px Geist;color:#efefef}
+.zebra-v8 .studio-surface-head span{font:500 9px 'Geist Mono',monospace;color:#999}
+.zebra-v8 .studio-line{display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid #232323;transition:background .25s}
+.zebra-v8 .studio-line:last-child{border:0}.zebra-v8 .studio-line:hover{background:#141414}
+.zebra-v8 .studio-line>div{min-width:0;flex:1}
+.zebra-v8 .studio-line strong,.zebra-v8 .studio-event strong{display:block;color:#ededed;font:550 12px Geist}
+.zebra-v8 .studio-line small,.zebra-v8 .studio-event small{display:block;color:#888;font:10px/1.4 Geist;margin-top:4px}
+.zebra-v8 .studio-line>a,.zebra-v8 .studio-line>span:last-child{color:#b9b9b9;font:10px 'Geist Mono',monospace}
+.zebra-v8 .studio-line>a:hover{color:#fff}
+.zebra-v8 .studio-symbol{height:30px;width:30px;min-width:30px;border:1px solid #373737;border-radius:7px;background:#171717;display:grid;place-items:center;font:600 12px 'Geist Mono',monospace;color:#ddd}
+.zebra-v8 .studio-event{display:flex;gap:10px;margin:15px 14px 11px;align-items:start}
+.zebra-v8 .studio-event i{margin-top:5px;width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#bbb}
+.zebra-v8 .studio-link{display:block;color:#bababa;font:10px Geist;margin:17px 14px}.zebra-v8 .studio-link:hover{color:#fff}
+.zebra-v8 .studio-remark{font:10px/1.7 'Geist Mono',monospace;color:#909090;margin:18px 0}
+.zebra-v8 .studio-statusbar{display:flex;justify-content:space-between;gap:14px;padding:11px 16px;background:#090909;border-top:1px solid #272727;color:#999;font:9px/1.4 'Geist Mono',monospace;letter-spacing:.03em}
+.zebra-v8 .hero.container>.product-stage{margin-top:58px!important}
+.zebra-v8 .product-stage .visual-content-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.zebra-v8 .product-stage .visual-body .visual-sidebar{min-height:565px}
+.zebra-v8 .hero .product-stage .visual-body{height:auto!important}
+html[data-theme=light] .zebra-v8 .window,html[data-theme=light] .zebra-v8 .studio-window,body[data-theme=light].zebra-v8 .window{background:#f8f8f6!important;color:#111!important;border-color:#c7c7c0!important;box-shadow:0 35px 100px #0002!important}
+html[data-theme=light] .zebra-v8 .window-head,html[data-theme=light] .zebra-v8 .visual-header{background:#f0f0ee!important;color:#111!important;border-color:#d0d0c9!important}
+html[data-theme=light] .zebra-v8 .visual-body,html[data-theme=light] .zebra-v8 .window-body,html[data-theme=light] .zebra-v8 .window-content,html[data-theme=light] .zebra-v8 .visual-content,html[data-theme=light] .zebra-v8 .studio-toolbar{background:#fafaf9!important;color:#111!important}
+html[data-theme=light] .zebra-v8 .window-side,html[data-theme=light] .zebra-v8 .visual-sidebar{background:#ececea!important;border-color:#d8d8d2!important}
+html[data-theme=light] .zebra-v8 .studio-preview-panel h3,html[data-theme=light] .zebra-v8 .studio-line strong,html[data-theme=light] .zebra-v8 .studio-surface-head strong{color:#121212!important}
+html[data-theme=light] .zebra-v8 .studio-surface,html[data-theme=light] .zebra-v8 .visual-stats>div,html[data-theme=light] .zebra-v8 .metric-row>div,html[data-theme=light] .zebra-v8 .preview-rows{background:#f2f2ef!important;color:#111!important;border-color:#d6d6cf!important}
+html[data-theme=light] .zebra-v8 .window-side .side-option.selected,html[data-theme=light] .zebra-v8 .visual-sidebar-item.active{background:#dcdcd8!important;color:#111!important;box-shadow:inset 2px 0 #333!important}
+html[data-theme=light] .zebra-v8 .visual-stats b,html[data-theme=light] .zebra-v8 .metric-row b{color:#111!important}
+html[data-theme=light] .zebra-v8 .studio-line,html[data-theme=light] .zebra-v8 .studio-surface-head{border-color:#d8d8d2!important}
+html[data-theme=light] .zebra-v8 .studio-mini-btn,html[data-theme=light] .zebra-v8 .studio-symbol{background:#e6e6e3!important;border-color:#cecec8!important;color:#171717!important}
+html[data-theme=light] .zebra-v8 .studio-statusbar{background:#efefed;color:#777;border-color:#d5d5cf}
+@media(max-width:700px){
+ .zebra-v8 .studio-columns{grid-template-columns:1fr}
+ .zebra-v8 .studio-body{min-height:0!important}
+ .zebra-v8 .studio-body .visual-content-top{flex-wrap:wrap}
+ .zebra-v8 .studio-mini-btn{min-height:30px;font-size:9px}
+ .zebra-v8 .studio-line{padding:11px 9px;gap:7px}
+ .zebra-v8 .studio-line strong{font-size:10px}
+ .zebra-v8 .studio-surface-head{padding:11px 9px}
+ .zebra-v8 .studio-surface-head span{font-size:7px}
+ .zebra-v8 .studio-statusbar{font-size:7px}
+ .zebra-v8 .hero.container>.product-stage{margin-top:35px!important}
+}
