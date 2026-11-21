@@ -49,7 +49,7 @@ function fromAddress(raw){
  return match?{name:match[1].trim().replace(/^["']|["']$/g,''),email:match[2].trim()}:
  {name:"Zebra's Shop",email:s};
 }
-export async function sendShopEmail({to,subject,text,html,idempotencyKey,env=process.env,fetchImpl=fetch}){
+export async function sendShopEmail({to,subject,text,html,idempotencyKey,replyTo,env=process.env,fetchImpl=fetch}){
  const type=activeMailer(env);
  if(!type)throw Object.assign(new Error('Email provider not configured.'),{code:'MAIL_NOT_CONFIGURED'});
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(to||'')))throw new Error('Invalid recipient.');
@@ -60,12 +60,14 @@ export async function sendShopEmail({to,subject,text,html,idempotencyKey,env=pro
   const name=String(env.BREVO_FROM_NAME||"Zebra's Shop").slice(0,80);
   body={sender:{name,email:String(env.BREVO_FROM_EMAIL).trim()},to:[{email:to}],subject,textContent:text};
   if(html)body.htmlContent=html;
+  if(replyTo&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(replyTo)))body.replyTo={email:String(replyTo)};
  }else{
   url='https://api.resend.com/emails';
   headers={'Content-Type':'application/json','Authorization':'Bearer '+env.RESEND_API_KEY};
   if(idempotencyKey)headers['Idempotency-Key']=String(idempotencyKey).slice(0,160);
   body={from:env.MAIL_FROM,to:[to],subject,text};
   if(html)body.html=html;
+  if(replyTo&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(replyTo)))body.reply_to=String(replyTo);
  }
  const response=await fetchImpl(url,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
  if(!response.ok){
