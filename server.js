@@ -75,16 +75,18 @@ async function grantFromStripe(session){
  const order=(await query('SELECT * FROM purchases WHERE session_id=$1',[session.id]))[0];
  if(!order||!byId[order.sku]||order.status==='revoked')return false;
  if(session.client_reference_id!==order.user_id||session.metadata?.user_id!==order.user_id||session.metadata?.sku!==order.sku)return false;
- // The paid Stripe amount must match a server-created, validated discounted order.
- const quoted=discountQuote(byId[order.sku],String(session.metadata?.promo_code||''));
- if(!quoted.ok||Number(order.amount)!==quoted.total||Number(session.amount_total)!==quoted.total)return false;
+ // Immutable purchase price: the order was created by our own server, so
+ // later changes to catalog prices or retired coupons must not revoke buyers.
+ if(!Number.isSafeInteger(Number(order.amount))||Number(order.amount)<50||
+    Number(session.amount_total)!==Number(order.amount))return false;
  // Verify the charge has not already been refunded or disputed before granting access.
  if(!session.payment_intent)return false;
  const intent=await stripe.paymentIntents.retrieve(typeof session.payment_intent==='object'?session.payment_intent.id:session.payment_intent,{expand:['latest_charge']});
  if(intent.status!=='succeeded'||intent.amount_received!==order.amount||intent.currency!=='usd')return false;
  const charge=intent.latest_charge;
  if(!charge||typeof charge==='string'||charge.refunded||Number(charge.amount_refunded)>0||charge.disputed)return false;
- await query(`UPDATE purchases SET status='paid',payment_intent=$1,paid_at=$2 WHERE session_id=$3 AND status!='revoked'`,[intent.id,now(),session.id]);
+ await query(`UPDATE purchases SET status='paid',payment_intent=$1,
+  paid_at=COALESCE(paid_at,$2) WHERE session_id=$3 AND status!='revoked'`,[intent.id,now(),session.id]);
  return true;
 }
 // Registered BEFORE JSON parser: Stripe signatures require the untouched raw body.
@@ -96,9 +98,17 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
     const s=evt.data.object;if(s.payment_status==='paid')await grantFromStripe(await stripe.checkout.sessions.retrieve(s.id));
   }
   if(['charge.refunded','charge.dispute.created'].includes(evt.type)){
-    const ch=evt.type==='charge.refunded'?evt.data.object:evt.data.object.charge;
-    const paymentIntent=typeof ch==='object'?ch?.payment_intent:evt.data.object.payment_intent;
-    if(paymentIntent)await query(`UPDATE purchases SET status='revoked' WHERE payment_intent=$1`,[paymentIntent]);
+    // Dispute events carry a charge ID, not a PaymentIntent. Retrieve the charge
+    // rather than silently failing to revoke purchases on disputes.
+    const ch=evt.type==='charge.refunded'?evt.data.object:
+      await stripe.charges.retrieve(typeof evt.data.object.charge==='string'?
+        evt.data.object.charge:evt.data.object.charge?.id);
+    const paymentIntent=typeof ch.payment_intent==='string'?ch.payment_intent:ch.payment_intent?.id;
+    if(paymentIntent){
+      await query(`UPDATE purchases SET status='revoked' WHERE payment_intent=$1`,[paymentIntent]);
+      // All issued licenses also stop working because entitlementIsPaid checks
+      // only active orders, in addition to checking Stripe on each payload fetch.
+    }
   }
   res.sendStatus(200);
  }catch(e){console.error('Stripe webhook failure',e);res.sendStatus(500);}
@@ -242,7 +252,18 @@ app.get('/api/injector/download',downloadLimiter,requireUser,async(req,res)=>{
 });
 // Legacy direct downloads are intentionally disabled: buyers receive loaders only.
 app.get('/api/download/:sku',(_req,res)=>res.status(410).json({error:'Raw downloads are disabled. Open My Library and generate your licensed loadstring.'}));
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'zebra-store',checkout:checkoutReady()?'configured':'disabled',vault_ready:!!process.env.ZEBRA_PAYLOAD_KEY}));
+app.get('/api/health',(_req,res)=>{
+ const vaultReady=!!process.env.ZEBRA_PAYLOAD_KEY&&
+  products.filter(p=>!p.unavailable).every(p=>p.file&&hasSealed(SCRIPT_DIR,p.file));
+ res.json({
+  ok:true,service:'zebra-store',checkout:checkoutReady()?'configured':'disabled',
+  mode:testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unconfigured',
+  email_login_ready:mailReady()&&usingPostgres,
+  stripe_api_ready:!!stripe,webhook_configured:!!webSecret,
+  postgres_ready:usingPostgres,vault_ready:vaultReady,
+  disabled_by_owner:process.env.DISABLE_CHECKOUT==='1'
+ });
+});
 app.use(express.static(path.join(ROOT,'public'),{index:'index.html',dotfiles:'deny',setHeaders:r=>r.setHeader('Cache-Control','public,max-age=300')}));
 app.get('*',(_req,res)=>res.sendFile(path.join(ROOT,'public','index.html')));
 init().then(()=>app.listen(PORT,'0.0.0.0',()=>console.log(`BL Scripts Marketplace at ${SITE.origin}; checkout ${checkoutReady()?'READY':'LOCKED'}`))).catch(e=>{console.error('Database initialization failed',e);process.exit(1);});
