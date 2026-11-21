@@ -1,0 +1,46 @@
+name: One-time live Zebra Support delivery smoke test
+on:
+  push:
+    paths:
+      - .github/workflows/support-smoke.yml
+permissions:
+  contents: read
+jobs:
+  support-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Public contact page and support-form script return 200
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail --max-time 40 https://zebra-bl-marketplace.onrender.com/support/ | grep -q 'id="zebra-support-form"'
+          curl --silent --show-error --fail --max-time 40 https://zebra-bl-marketplace.onrender.com/support-form.js | grep -q '/api/support/request'
+      - name: Send one non-customer live support test to shop inbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, urllib.request
+          url='https://zebra-bl-marketplace.onrender.com/api/support/request'
+          test={
+            'name':'Zebra Shop QA Test',
+            'email':'zebrablshopofficial@gmail.com',
+            'subject':'Other',
+            'product':'',
+            'order':'',
+            'message':'One-time automated Zebra support form integration test. Please ignore this message; no reply is needed.',
+            'website':''
+          }
+          req=urllib.request.Request(
+            url,
+            data=json.dumps(test).encode('utf-8'),
+            headers={'Content-Type':'application/json','Accept':'application/json'},
+            method='POST'
+          )
+          with urllib.request.urlopen(req,timeout=40) as response:
+            data=json.load(response)
+            if response.status!=202 or not data.get('ok') or not data.get('reference','').startswith('ZBS-'):
+              raise RuntimeError('Support API rejected the integration test')
+            print('Support request accepted by email provider. Reference:',data['reference'])
+          PY
