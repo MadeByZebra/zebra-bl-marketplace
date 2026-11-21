@@ -58,7 +58,7 @@ test('first-party support form has accessible required fields, API and mail-prov
  const html=readFileSync(new URL('../public/support/index.html',import.meta.url),'utf8');
  const script=readFileSync(new URL('../public/support-form.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
- const chat=readFileSync(new URL('../public/tawk-chat.js',import.meta.url),'utf8');
+ const chat=readFileSync(new URL('../public/zebra-support-chat.js',import.meta.url),'utf8');
  for(const field of ['name','email','subject','message']){
   assert.ok(html.includes('name="'+field+'"'));
  }
@@ -68,7 +68,7 @@ test('first-party support form has accessible required fields, API and mail-prov
  assert.match(script,/response\.ok/);
  assert.match(server,/app\.post\('\/api\/support\/request',supportFormLimiter/);
  assert.match(server,/sendShopEmail\(\{to:destination,replyTo:input\.email/);
- assert.match(chat,/const supportFormLink = '\/support\/#contact'/);
+ assert.match(chat,/const supportUrl='\/support\/#contact'/);
 });
 
 
