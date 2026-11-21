@@ -19,6 +19,15 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit
+      - name: Check JavaScript syntax before release
+        run: |
+          node --check server.js
+          node --check email-delivery.js
+          node --check email-otp.js
+          node --check public/account/account.js
+          node --check public/app.js
+          node --check public/shop.js
+          node --check public/shop-studio-v8.js
       - name: Run unit and security regression tests
         run: npm test
       - name: Source must not contain runtime secrets
