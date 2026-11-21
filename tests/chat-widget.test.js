@@ -25,3 +25,23 @@ test('the branded launcher is not hidden until chat is opened',()=>{
   assert.match(css,/\.zebra-support-trigger\.is-open\s*\{[^}]*visibility:hidden/);
   assert.match(loader,/api\.onChatHidden/);
 });
+
+
+test('chat locks storefront scrolling when maximized and restores on minimize/close',()=>{
+  const css=readFileSync(new URL('../public/zebra-chat.css',import.meta.url),'utf8');
+  const smoothScroll=readFileSync(new URL('../public/smooth-scroll.js',import.meta.url),'utf8');
+  assert.match(loader,/classList\.toggle\('zebra-chat-scroll-locked',\s*isOpen\)/);
+  assert.match(loader,/api\.onChatMaximized\s*=\s*function/);
+  assert.match(loader,/api\.onChatMinimized\s*=\s*function/);
+  assert.match(loader,/api\.onChatHidden\s*=\s*function/);
+  assert.match(css,/html\.zebra-chat-scroll-locked[^}]*overflow-y:\s*hidden\s*!important/);
+  assert.match(smoothScroll,/zebra-chat-scroll-locked/g);
+  assert.match(smoothScroll,/if\(e\.cancelable\)e\.preventDefault\(\)/);
+});
+test('the same support button provides separate free email support',()=>{
+  const css=readFileSync(new URL('../public/zebra-chat.css',import.meta.url),'utf8');
+  assert.match(loader,/zebra-support-email/);
+  assert.match(loader,/mailto:/);
+  assert.match(loader,/zebrablshopofficial@gmail\.com/);
+  assert.match(css,/\.zebra-support-email/);
+});
