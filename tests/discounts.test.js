@@ -29,3 +29,26 @@ test('discounts never lower a paid order below 50 cents',()=>{
   }
  }
 });
+
+test('owner-configured complimentary code yields a genuine zero-dollar quote',()=>{
+ const c=discountQuote(byId['control-center'],'zebrafree',{freeCode:'ZEBRAFREE'});
+ assert.equal(c.ok,true);
+ assert.equal(c.free,true);
+ assert.equal(c.total,0);
+ assert.equal(c.percent,100);
+ assert.equal(c.saved,1999);
+ assert.equal(discountQuote(byId['control-center'],'zebrafree').ok,false);
+});
+test('complimentary code excludes unverified installer and diagnostic and remains separate from regular discounts',()=>{
+ const o={freeCode:'ZEBRAFREE'};
+ assert.equal(discountQuote(byId['zflag-injector'],'ZEBRAFREE',o).ok,false);
+ assert.equal(discountQuote(byId['checkout-test'],'ZEBRAFREE',o).ok,false);
+ assert.equal(discountQuote(byId['complete-collection'],'ZEBRAFREE',o).total,0);
+ assert.equal(discountQuote(byId['control-center'],'ZEBRA10',o).total,1800);
+});
+test('unknown or malformed complimentary promotions fail closed',()=>{
+ const o={freeCode:'ZEBRAFREE'};
+ assert.equal(discountQuote(byId['fps-optimizer'],'NOFREE',o).ok,false);
+ assert.equal(discountQuote(byId['fps-optimizer'],'ZEBRAFREE123',o).ok,false);
+ assert.equal(discountQuote(byId['fps-optimizer'],'ZEBRAFREE',{freeCode:'invalid code'}).ok,false);
+});
