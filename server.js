@@ -184,7 +184,8 @@ async function sendPurchaseConfirmation(sessionId){
  const order=(await query(`SELECT p.session_id,p.sku,p.amount,u.email
  FROM purchases p JOIN users u ON u.id=p.user_id
  WHERE p.session_id=$1 AND p.status='paid'`,[sessionId]))[0];
- if(!order||order.sku==='checkout-test'||testMode()&&!isSandboxTester(order.email))return;
+ // Diagnostic purchases may email approved sandbox testers, but never live customers.
+ if(!order||(order.sku==='checkout-test'&&!testMode())||(testMode()&&!isSandboxTester(order.email)))return;
  const claim=await query(
   'INSERT INTO purchase_notifications(session_id,sent_at) VALUES ($1,$2) ON CONFLICT(session_id) DO NOTHING RETURNING session_id',
   [sessionId,now()]);
