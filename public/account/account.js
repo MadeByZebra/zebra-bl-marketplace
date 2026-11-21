@@ -104,10 +104,10 @@
       const info=element('div');
       info.append(
         element('strong',product.title),
-        element('span',dateLabel(order.paid_at)+' · '+priceLabel(order.amount)+' · Paid')
+        element('span',dateLabel(order.paid_at)+' · '+priceLabel(order.amount)+(Number(order.amount)===0?' · Free promotional order':' · Paid'))
       );
       row.append(info);
-      if(typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
+      if(Number(order.amount)>0&&typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
         const receipt=link('/api/receipt/'+encodeURIComponent(order.session_id),'Stripe receipt ↗');
         receipt.target='_blank';
         receipt.rel='noopener noreferrer';
