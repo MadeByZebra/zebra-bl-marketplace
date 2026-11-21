@@ -1,8 +1,9 @@
+import { checkoutModeMatches } from './stripe-integrity.js';
 // A free order is NOT a credit-card payment. Grant it only after Stripe
 // confirms a completed, fully discounted Checkout Session that matches the
 // server-created order and the reserved account redemption.
-export function validFreeCheckout(session,order,claim){
- if(!session||!order||!claim)return false;
+export function validFreeCheckout(session,order,claim,configuredMode='test'){
+ if(!session||!order||!claim||!checkoutModeMatches(session,configuredMode))return false;
  if(!Number.isSafeInteger(Number(order.amount))||Number(order.amount)!==0)return false;
  if(session.status!=='complete'||!['paid','no_payment_required'].includes(session.payment_status))return false;
  if(session.currency!=='usd'||Number(session.amount_total)!==0||session.payment_intent)return false;
