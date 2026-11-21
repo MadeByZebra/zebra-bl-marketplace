@@ -33,7 +33,8 @@ const schema=[
  `CREATE TABLE IF NOT EXISTS purchases (session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_intent TEXT, created_at BIGINT NOT NULL, paid_at BIGINT)`,
  `CREATE TABLE IF NOT EXISTS licenses (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, created_at BIGINT NOT NULL, revoked_at BIGINT, last_used_at BIGINT)`,
  `CREATE UNIQUE INDEX IF NOT EXISTS licenses_one_active_per_product ON licenses (user_id,sku) WHERE revoked_at IS NULL`,
- `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`
+ `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`,
+ `CREATE TABLE IF NOT EXISTS free_promo_redemptions (user_id TEXT PRIMARY KEY REFERENCES users(id), sku TEXT NOT NULL, session_id TEXT UNIQUE NOT NULL, created_at BIGINT NOT NULL, redeemed_at BIGINT)`
 ];
 async function query(sql,values=[]){
  if(pool){const r=await pool.query(sql,values);return r.rows;}
@@ -71,6 +72,33 @@ const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
 const paymentReady=()=>!!(stripe&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(testMode()||(process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'));
 const testCheckoutReady=()=>checkoutReady()&&testMode()&&process.env.ENABLE_TEST_CHECKOUT==='1';
+const quoteFor=(item,code)=>discountQuote(item,code,{freeCode:process.env.ZEBRA_FREE_PROMO_CODE||''});
+// The 100%-off code is private and limited to five completed Stripe coupon
+// redemptions across all accounts. The shop also permits one order per account.
+const FREE_STRIPE_COUPON_ID='zebra-shop-private-free-2026-v1';
+async function ensureFreeCoupon(){
+ try{return await stripe.coupons.retrieve(FREE_STRIPE_COUPON_ID);}
+ catch(err){
+  if(err.code!=='resource_missing')throw err;
+  try{
+   return await stripe.coupons.create({
+    id:FREE_STRIPE_COUPON_ID,name:'Zebra Shop: private complimentary order',
+    percent_off:100,duration:'once',max_redemptions:5
+   });
+  }catch(inner){
+   if(inner.code==='resource_already_exists')return await stripe.coupons.retrieve(FREE_STRIPE_COUPON_ID);
+   throw inner;
+  }
+ }
+}
+async function reserveFreePromo(userId,sku){
+ // Unfinished checkouts automatically expire; a user can then try again.
+ await query('DELETE FROM free_promo_redemptions WHERE redeemed_at IS NULL AND created_at<$1',[now()-75*60*1000]);
+ const reservation='pending-'+randomUUID();
+ const rows=await query('INSERT INTO free_promo_redemptions (user_id,sku,session_id,created_at) VALUES ($1,$2,$3,$4) ON CONFLICT(user_id) DO NOTHING RETURNING user_id',[userId,sku,reservation,now()]);
+ if(!rows.length)return null;
+ return reservation;
+}
 function checkoutStatus(){
  if(process.env.DISABLE_CHECKOUT==='1')return 'Payments are paused until the Stripe sandbox and customer email delivery are verified. No charge was made.';
  if(!stripe||!testMode()&&process.env.ALLOW_LIVE_SALES!=='1')return 'Stripe test payments are not connected. No charge was made.';
@@ -181,7 +209,7 @@ const quoteLimiter=rateLimit({windowMs:15*60*1000,limit:80,standardHeaders:'draf
 app.get('/api/discount/quote',quoteLimiter,(req,res)=>{
  const item=byId[String(req.query.sku||'')];
  if(!item||item.unavailable)return res.status(404).json({error:'Product not available.'});
- const quote=discountQuote(item,req.query.code);
+ const quote=quoteFor(item,req.query.code);
  if(!quote.ok)return res.status(400).json({error:quote.error});
  res.json(quote);
 });
@@ -235,7 +263,7 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
  if(!checkoutReady())return res.status(503).json({error:checkoutStatus()||'Checkout is unavailable. No payment was taken.'});
  if(req.body?.accepted_terms!==true)return res.status(400).json({error:'Please accept store terms before purchase.'});
  const sku=String(req.body?.sku||''),item=byId[sku];if(!item||!Number.isInteger(item.price)||item.price<50||item.unavailable&&sku!=='checkout-test'||sku==='checkout-test'&&!testCheckoutReady()||sku!=='checkout-test'&&includedIds(item).some(id=>{const entry=byId[id];return !entry?.file||!hasSealed(SCRIPT_DIR,entry.file);}))return res.status(400).json({error:'Product is not available for paid checkout yet.'});
- const quote=discountQuote(item,req.body?.discount_code);
+ const quote=quoteFor(item,req.body?.discount_code);
  if(!quote.ok)return res.status(400).json({error:quote.error});
  try{
   const session=await stripe.checkout.sessions.create({
