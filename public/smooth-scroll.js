@@ -10,6 +10,9 @@
  const clamp=y=>Math.max(0,Math.min(limit(),y));
  const cancel=()=>{if(frame!==null)cancelAnimationFrame(frame);frame=null;lastTime=0;goal=scrollY;lastSet=null};
  function tick(now){
+   // The support chat is a separate scrolling surface. Stop any in-flight
+   // smooth-scrolling animation when the visitor opens it.
+   if(document.documentElement.classList.contains('zebra-chat-scroll-locked')){cancel();return;}
    const dt=lastTime?Math.min(64,Math.max(1,now-lastTime)):16.67;lastTime=now;goal=clamp(goal);
    const current=scrollY;
    if(lastSet!==null&&Math.abs(current-lastSet)>4){cancel();return}
@@ -27,6 +30,12 @@
    return false;
  }
  addEventListener('wheel',e=>{
+  // Do not scroll the storefront beneath an expanded support conversation.
+  if(document.documentElement.classList.contains('zebra-chat-scroll-locked')){
+    cancel();
+    if(e.cancelable)e.preventDefault();
+    return;
+  }
   if(reduced.matches||e.defaultPrevented||!e.cancelable||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||Math.abs(e.deltaX)>Math.abs(e.deltaY)||nested(e.target)){cancel();return}
   let d=e.deltaY;if(e.deltaMode===1)d*=20;else if(e.deltaMode===2)d*=innerHeight*.9;
   if(!Number.isFinite(d)||d===0||!limit())return;
