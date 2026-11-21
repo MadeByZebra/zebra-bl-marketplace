@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
 import { discountQuote } from './discounts.js';
+import { validFreeCheckout } from './free-checkout.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
 
@@ -132,10 +133,7 @@ async function grantFromStripe(session){
   // server-issued 100%-off coupon and a matching one-account reservation.
   const claimed=(await query('SELECT * FROM free_promo_redemptions WHERE user_id=$1 AND session_id=$2 AND sku=$3',
     [order.user_id,session.id,order.sku]))[0];
-  if(!claimed||session.status!=='complete'||session.metadata?.free_promo!=='v1'||
-     session.payment_intent||session.amount_subtotal<=0||
-     Number(session.total_details?.amount_discount)!==Number(session.amount_subtotal)||
-     session.payment_status!=='paid'&&session.payment_status!=='no_payment_required')return false;
+  if(!validFreeCheckout(session,order,claimed))return false;
   await query(`UPDATE purchases SET status='paid',paid_at=COALESCE(paid_at,$1)
     WHERE session_id=$2 AND status!='revoked'`,[now(),session.id]);
   await query('UPDATE free_promo_redemptions SET redeemed_at=$1 WHERE user_id=$2 AND session_id=$3 AND redeemed_at IS NULL',
