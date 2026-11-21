@@ -20,7 +20,7 @@ test('every public page includes exactly one identical version of smooth wheel s
   const html=read(page);
   const matches=[...html.matchAll(/<script\s+src="(\/smooth-scroll\.js(?:\?[^"]*)?)"\s+defer><\/script>/g)];
   assert.equal(matches.length,1,'Missing or duplicated scrolling engine on '+page);
-  assert.equal(matches[0][1],'/smooth-scroll.js?v=20261121all',
+  assert.equal(matches[0][1],'/smooth-scroll.js?v=20261121v21',
     'Mismatched cached engine version on '+page);
   assert.ok(html.includes('href="/zebra-chat.css"'),
     'Missing shared anchor smooth scroll CSS on '+page);
