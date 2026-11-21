@@ -243,7 +243,20 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
  }catch(e){console.error('Stripe webhook failure',e);res.sendStatus(500);}
 });
 app.use(express.json({limit:'20kb'}));app.use('/api',validateOrigin);
-app.get('/api/store',(_req,res)=>res.json(publicState()));
+app.get('/api/store',async(req,res)=>{
+ try{
+  const state=publicState();
+  if(testMode()&&state.checkout_ready){
+   const user=await fetchUser(req);
+   if(!isSandboxTester(user?.email)){
+    state.checkout_ready=false;
+    state.test_checkout_ready=false;
+    state.checkout_message='Stripe is in an owner-only sandbox. Public purchases are not available yet; no real charge will be made.';
+   }
+  }
+  res.json(state);
+ }catch(e){safeError(res,e);}
+});
 // Public price preview only. Stripe always receives the server-validated amount.
 const quoteLimiter=rateLimit({windowMs:15*60*1000,limit:80,standardHeaders:'draft-7',legacyHeaders:false});
 app.get('/api/discount/quote',quoteLimiter,(req,res)=>{
