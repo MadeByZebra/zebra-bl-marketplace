@@ -35,7 +35,7 @@ async function freePort(){
 }
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 async function json(url,options={}){
- const res=await fetch(url,{headers:{'Content-Type':'application/json',...options.headers},...options});
+ const res=await fetch(url,{...options,headers:{'Content-Type':'application/json',...options.headers}});
  const data=await res.json();
  return {res,data};
 }
