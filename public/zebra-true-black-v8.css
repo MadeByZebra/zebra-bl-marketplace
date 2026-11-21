@@ -1,0 +1,215 @@
+/* ZEBRA’S SHOP — TRUE BLACK STUDIO / ZFLAG DESIGN PARITY
+   Based on the current ZFLAG black-edition layout: centered cinematic headline,
+   full-width workstation, inset monochrome panels, dense but deliberate details.
+   This file LAST in the cascade, replacing old storefront design only. */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600;650;700&family=Geist+Mono:wght@400;500;600&display=swap');
+:root,html[data-theme=dark],body[data-theme=dark]{
+ --bg:#000!important;--bg2:#040404!important;--bg-2:#040404!important;
+ --panel:#080808!important;--panel2:#0d0d0d!important;--panel-2:#0d0d0d!important;
+ --raised:#141414!important;--hover:#141414!important;
+ --text:#f5f5f5!important;--muted:#a0a0a0!important;--soft:#777!important;--faint:#777!important;
+ --line:#222!important;--line2:#363636!important;--line-2:#363636!important;
+ --button:#ededed!important;--accent:#ededed!important;
+ --button-text:#090909!important;--accenttext:#090909!important;
+ --glass:rgba(0,0,0,.94)!important;--grid:rgba(255,255,255,.015)!important;
+ --shadow:0 36px 100px rgba(0,0,0,.8)!important;
+ --ease:cubic-bezier(.2,.7,.2,1);--fluid:cubic-bezier(.16,1,.3,1)
+}
+html[data-theme=light],body[data-theme=light]{
+ --bg:#f6f6f4!important;--bg2:#efefec!important;--bg-2:#efefec!important;
+ --panel:#fbfbfa!important;--panel2:#f3f3f0!important;--panel-2:#f3f3f0!important;
+ --raised:#fff!important;--hover:#fff!important;--text:#101010!important;
+ --muted:#686868!important;--soft:#969696!important;--faint:#969696!important;
+ --line:#deded9!important;--line2:#c8c8c2!important;--line-2:#c8c8c2!important;
+ --button:#111!important;--accent:#111!important;--button-text:#fff!important;--accenttext:#fff!important;
+ --glass:rgba(248,248,246,.93)!important;--grid:rgba(0,0,0,.018)!important;
+ --shadow:0 36px 100px rgba(0,0,0,.12)!important
+}
+body{background:var(--bg)!important;font-family:'Geist','Segoe UI Variable','Segoe UI',sans-serif!important;letter-spacing:-.017em!important}
+body::before,body::after{display:none!important;content:none!important}
+html{scroll-padding-top:106px}
+a,button,[role=button]{-webkit-tap-highlight-color:transparent}
+.zebra-v8 h1,.zebra-v8 h2,.zebra-v8 h3{font-family:Geist,'Segoe UI',sans-serif}
+.zebra-v8 ::selection{background:var(--text);color:var(--bg)}
+.zebra-v8 .nav-shell{top:16px}.zebra-v8 .nav{height:64px!important;border-radius:15px!important;background:var(--glass)!important;border:1px solid var(--line)!important;box-shadow:0 12px 32px #0009,inset 0 1px #ffffff0c!important}
+.zebra-v8 .brand{font-size:14px!important;letter-spacing:.08em!important;font-weight:650!important}
+.zebra-v8 .nav-links a{font-weight:550}.zebra-v8 .nav-links a:hover,.zebra-v8 .nav-links a.active{background:var(--raised)!important;color:var(--text)}
+.zebra-v8 .btn,.zebra-v8 .iconbtn{height:43px;min-height:43px!important;border-radius:9px!important;transition:transform .34s var(--fluid),background .26s,border-color .26s,box-shadow .32s,filter .25s!important}
+.zebra-v8 .btn.primary{background:var(--button)!important;border-color:var(--button)!important;color:var(--button-text)!important;box-shadow:none!important}
+.zebra-v8 .btn.primary:hover{filter:brightness(1.08);box-shadow:0 8px 26px #ffffff10!important}
+.zebra-v8 .hero{min-height:0!important;padding:156px 0 58px!important;display:block!important;position:relative}
+.zebra-v8 .hero-grid{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:59px!important;max-width:1240px!important;grid-template-columns:none!important;width:100%}
+.zebra-v8 .hero-copy{display:flex!important;flex-direction:column!important;align-items:center!important;width:100%;max-width:1060px!important;margin:0 auto!important;text-align:center!important}
+.zebra-v8 .atelier-pill{display:inline-flex!important;align-items:center;gap:12px;padding:10px 17px!important;margin:0 0 28px!important;background:var(--panel)!important;border:1px solid var(--line2)!important;border-radius:999px!important;box-shadow:none!important;font:600 10px 'Geist Mono',monospace!important;letter-spacing:.07em!important;color:var(--muted)!important}
+.zebra-v8 .atelier-pill b,.zebra-v8 .atelier-pill strong{color:var(--text)!important}
+.zebra-v8 .atelier-pill i,.zebra-v8 .atelier-pill .status-light{width:7px;height:7px;background:var(--text)!important;border-radius:50%;box-shadow:0 0 0 4px #ffffff12!important}
+.zebra-v8 .eyebrow{justify-content:center!important;font:500 10px 'Geist Mono',monospace!important;color:var(--muted)!important;letter-spacing:.18em!important}
+.zebra-v8 .eyebrow:before{display:none!important}
+.zebra-v8 .hero h1{font-size:clamp(74px,9.4vw,148px)!important;line-height:.92!important;font-weight:700!important;letter-spacing:-.081em!important;margin:19px 0 27px!important;max-width:none!important;text-align:center!important;white-space:normal!important}
+.zebra-v8 .hero h1 span{color:var(--text)!important;background:linear-gradient(105deg,var(--text),var(--muted),var(--text))!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;font-weight:680!important}
+.zebra-v8 .hero-copy>p:not(.release-bridge-status){font-size:clamp(15px,1.5vw,19px)!important;line-height:1.75!important;max-width:700px!important;color:var(--muted)!important;text-align:center!important;margin:0 auto!important}
+.zebra-v8 .hero-actions{display:flex;align-items:center;justify-content:center!important;gap:11px!important;flex-wrap:wrap!important;margin:31px 0 0!important}
+.zebra-v8 .hero-actions .btn,.zebra-v8 .hero-actions .primary-button,.zebra-v8 .hero-actions .outline-button{height:49px!important;min-height:49px!important;padding:0 21px!important;border-radius:9px!important;font:550 13px Geist,sans-serif!important;letter-spacing:-.012em!important}
+.zebra-v8 .hero-actions .primary-button{background:var(--text)!important;color:var(--bg)!important;border:1px solid var(--text)!important}
+.zebra-v8 .hero-actions .outline-button{background:var(--panel)!important;color:var(--text)!important;border:1px solid var(--line2)!important}
+.zebra-v8 .hero-meta,.zebra-v8 .micro{justify-content:center!important;gap:20px!important;flex-wrap:wrap;margin:20px auto 0!important;text-align:center}
+.zebra-v8 .release-bridge-status{font:500 10px/1.8 'Geist Mono',monospace!important;letter-spacing:.045em;color:var(--muted)!important;margin:18px auto 0!important;text-align:center!important}
+.zebra-v8 .atelier-scroll,.zebra-v8 .scroll-note{width:min(900px,100%);display:flex;gap:18px;align-items:center;justify-content:center;margin:47px auto 0!important;color:var(--muted)!important;font:500 9px 'Geist Mono',monospace!important;letter-spacing:.15em!important}
+.zebra-v8 .atelier-scroll i{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--line2),transparent)!important}
+.zebra-v8 .scroll-note:before,.zebra-v8 .scroll-note:after{content:"";display:block;width:80px;height:1px;background:linear-gradient(90deg,transparent,var(--line2),transparent)}
+/* Full-width showcase surround: exact structural idea of ZFLAG’s premium product stage */
+.zebra-v8 .product-stage,.zebra-v8 .studio-stage{
+ position:relative!important;width:100%!important;max-width:1190px!important;margin:0 auto!important;
+ padding:24px 23px 25px!important;border-radius:23px!important;border:1px solid var(--line2)!important;
+ background:var(--panel)!important;box-shadow:0 35px 95px #000a,inset 0 1px #ffffff0c!important;
+ transform:none!important;perspective:none!important
+}
+.zebra-v8 .product-stage:before,.zebra-v8 .studio-stage:before{display:none!important;content:none!important}
+.zebra-v8 .stage-overline,.zebra-v8 .stage-label{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:12px;padding:0 0 20px!important;margin:0!important;border:0!important;color:var(--muted)!important;font:500 10px 'Geist Mono',monospace!important}
+.zebra-v8 .stage-indicator{color:var(--text)!important}
+.zebra-v8 .stage-revision{font:500 9px 'Geist Mono',monospace!important;background:var(--raised)!important;border:1px solid var(--line2)!important;color:var(--text)!important;padding:5px 9px;border-radius:5px!important;margin-left:12px}
+.zebra-v8 .stage-spark{height:7px;width:7px;display:inline-block;background:var(--text)!important;border-radius:50%;box-shadow:0 0 0 4px #ffffff14!important;margin-right:8px}
+.zebra-v8 .hero-visual,.zebra-v8 .window,.zebra-v8 .studio-window{
+ position:relative;display:block;width:100%;max-width:100%!important;min-height:0!important;
+ border:1px solid var(--line2)!important;border-radius:14px!important;
+ background:#050505!important;color:#ededed!important;
+ box-shadow:0 28px 65px #000b!important;
+ overflow:hidden;transform:none!important;transition:border-color .28s,box-shadow .3s!important
+}
+.zebra-v8 .hero-visual:hover,.zebra-v8 .window:hover,.zebra-v8 .studio-window:hover{border-color:#626262!important;box-shadow:0 35px 82px #000b!important}
+.zebra-v8 .hero-visual:after,.zebra-v8 .window:after{display:none!important;content:none!important}
+.zebra-v8 .stage-foot{display:flex;justify-content:space-between;gap:12px;margin:16px 0 0!important;font:500 9px 'Geist Mono',monospace!important;letter-spacing:.06em;color:var(--muted)!important}
+/* Functional desktop preview: ZFLAG-inspired genuine controls and panels */
+.zebra-v8 .visual-header,.zebra-v8 .window-head,.zebra-v8 .studio-titlebar{height:46px!important;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0c0c0c!important;border-bottom:1px solid #292929!important;padding:0 15px!important;color:#e9e9e9;font:550 12px Geist!important}
+.zebra-v8 .visual-header .window-brand{display:flex;gap:12px;align-items:center}
+.zebra-v8 .visual-header .window-brand:before{content:"";width:22px;height:22px;display:block;background:linear-gradient(135deg,#1c1c1c,#050505);border:1px solid #333;border-radius:6px}
+.zebra-v8 .visual-body,.zebra-v8 .window-body{grid-template-columns:218px minmax(0,1fr)!important;display:grid!important;min-height:565px!important;background:#080808!important}
+.zebra-v8 .visual-sidebar,.zebra-v8 .window-side{background:#070707!important;border-right:1px solid #242424!important;padding:19px 12px!important}
+.zebra-v8 .visual-sidebar .side-label,.zebra-v8 .window-side .side-heading{display:block;color:#777!important;letter-spacing:.12em;font:500 9px 'Geist Mono',monospace!important;margin:13px 9px 10px!important}
+.zebra-v8 .visual-sidebar-item,.zebra-v8 .window-side .side-option{display:flex;align-items:center;gap:11px;height:39px!important;margin:0 0 4px!important;padding:0 11px!important;border-radius:7px!important;color:#9a9a9a!important;font:500 12px Geist!important;white-space:nowrap;transition:background .22s,color .22s,transform .25s!important}
+.zebra-v8 .visual-sidebar-item.active,.zebra-v8 .window-side .side-option.selected{background:#1a1a1a!important;color:#f3f3f3!important;box-shadow:inset 2px 0 #ccc!important}
+.zebra-v8 .visual-sidebar-item:not(.active):hover,.zebra-v8 .window-side .side-option:not(.selected):hover{background:#141414!important;color:#fff!important;transform:translateX(2px)}
+.zebra-v8 .visual-sidebar .side-version{font:500 9px 'Geist Mono',monospace!important;color:#999!important;white-space:normal;padding:18px 8px;margin-top:48px!important;border-top:1px solid #242424}
+.zebra-v8 .visual-content,.zebra-v8 .window-content{padding:0!important;background:#080808!important;min-width:0!important}
+.zebra-v8 .studio-toolbar{min-height:51px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 23px;background:#080808;border-bottom:1px solid #252525}
+.zebra-v8 .studio-toolbar .crumb{font:500 10px 'Geist Mono',monospace;color:#a0a0a0;letter-spacing:.06em}
+.zebra-v8 .studio-toolbar .crumb b{color:#f2f2f2}
+.zebra-v8 .studio-toolbar .status{font:500 10px 'Geist Mono',monospace;color:#999;display:flex;align-items:center;gap:7px}
+.zebra-v8 .studio-toolbar .status:before{content:"";width:6px;height:6px;border-radius:50%;background:#aaa;opacity:.75}
+.zebra-v8 .studio-body{padding:24px!important}
+.zebra-v8 .visual-content-top{margin-bottom:22px!important;align-items:center!important}
+.zebra-v8 .visual-content-top h3,.zebra-v8 .window-content h3{font:650 clamp(22px,2.4vw,31px)/1.15 Geist!important;letter-spacing:-.055em!important;color:#f3f3f3!important}
+.zebra-v8 .visual-kicker{font:500 10px 'Geist Mono',monospace!important;letter-spacing:.1em;color:#aaa!important}
+.zebra-v8 .visual-content-top p,.zebra-v8 .window-content>p{color:#999!important;font-size:11px!important;margin:7px 0 0!important}
+.zebra-v8 .visual-status{font:500 10px 'Geist Mono',monospace!important;color:#aaa!important;border:1px solid #303030!important;background:#111!important;border-radius:6px!important;padding:8px 10px!important}
+.zebra-v8 .visual-stats,.zebra-v8 .metric-row{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:11px!important;border:0!important;background:none!important;overflow:visible!important}
+.zebra-v8 .visual-stats>div,.zebra-v8 .metric-row>div{min-height:114px;background:#0d0d0d!important;border:1px solid #292929!important;border-radius:9px!important;padding:17px!important;box-shadow:inset 0 1px #ffffff04}
+.zebra-v8 .visual-stats b,.zebra-v8 .metric-row b{font:650 22px Geist!important;color:#f2f2f2!important;letter-spacing:-.055em!important;margin:12px 0 8px!important}
+.zebra-v8 .visual-stats span,.zebra-v8 .metric-row small{font:500 9px 'Geist Mono',monospace!important;letter-spacing:.05em!important;color:#999!important}
+.zebra-v8 .visual-stats small{font-size:10px!important;color:#777!important}
+.zebra-v8 .preview-tabs{margin-top:20px!important;display:flex;gap:3px;border-bottom:1px solid #292929!important}
+.zebra-v8 .preview-tabs button{border:1px solid transparent!important;border-radius:7px 7px 0 0!important;padding:12px 16px!important;background:none!important;color:#aaa!important;font:550 11px Geist!important;transition:background .2s,color .2s,border .2s!important}
+.zebra-v8 .preview-tabs button:hover{background:#161616!important;color:#fff!important}
+.zebra-v8 .preview-tabs button.is-active{color:#fff!important;background:#121212!important;border-bottom:2px solid #ccc!important}
+.zebra-v8 .preview-rows{border:1px solid #292929;border-radius:9px;margin-top:12px;overflow:hidden;background:#0b0b0b}
+.zebra-v8 .preview-row{margin:0!important;padding:13px 14px!important;border-bottom:1px solid #262626!important;transition:background .23s!important}
+.zebra-v8 .preview-row:last-child{border-bottom:0!important}
+.zebra-v8 .preview-row:hover{background:#151515!important}
+.zebra-v8 .preview-row-symbol{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;background:#191919!important;color:#ddd!important;border:1px solid #333!important;border-radius:7px!important}
+.zebra-v8 .preview-row-copy strong{font-size:12px!important;color:#ebebeb!important}
+.zebra-v8 .preview-row-copy span{font-size:10px!important;color:#999!important}
+.zebra-v8 .preview-row-pill{font:500 9px 'Geist Mono',monospace!important;color:#bdbdbd!important;border:1px solid #323232!important;background:#171717!important;border-radius:5px!important}
+.zebra-v8 .visual-bottom{border-top:1px solid #292929!important;color:#8d8d8d!important;font:500 9px 'Geist Mono',monospace!important;padding:15px 0 0!important;margin-top:19px!important}
+/* Editorial details and premium image-free illustration. */
+.zebra-v8 .quality-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0 auto 68px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);overflow:hidden}
+.zebra-v8 .quality-cell{padding:24px 22px;border-right:1px solid var(--line)!important;min-width:0}
+.zebra-v8 .quality-cell:last-child{border:0!important}
+.zebra-v8 .quality-k{display:block;font:550 9px 'Geist Mono',monospace;letter-spacing:.1em;color:var(--muted);margin-bottom:13px}
+.zebra-v8 .quality-cell strong{display:block;font:600 16px Geist;letter-spacing:-.035em;color:var(--text)}
+.zebra-v8 .quality-v{display:block;font:11px Geist;color:var(--muted);margin-top:6px}
+.zebra-v8 .section,.zebra-v8 .catalog-section,.zebra-v8 .bundle-section,.zebra-v8 .showcase-section,.zebra-v8 .how-section,.zebra-v8 .faq,.zebra-v8 .closing{background:var(--bg)!important;border-top:1px solid var(--line)!important}
+.zebra-v8 .section-head,.zebra-v8 .section-heading{grid-template-columns:1.08fr .92fr;gap:58px!important}
+.zebra-v8 .section-head h2,.zebra-v8 .section-heading h2{font:690 clamp(46px,5.7vw,77px)/1.025 Geist!important;letter-spacing:-.066em!important}
+.zebra-v8 .section-head h2 span,.zebra-v8 .section-heading h2 span{color:var(--muted)!important}
+.zebra-v8 .cards,.zebra-v8 .product-grid,.zebra-v8 .bundle-grid{gap:15px}
+.zebra-v8 .card,.zebra-v8 .product-card,.zebra-v8 .bundle-card{background:#080808!important;border:1px solid #292929!important;border-radius:15px!important;box-shadow:none!important;transition:transform .35s var(--fluid),border-color .28s,background .28s,box-shadow .3s!important}
+.zebra-v8 .card:hover,.zebra-v8 .product-card:hover,.zebra-v8 .bundle-card:hover{transform:translateY(-6px)!important;background:#0d0d0d!important;border-color:#646464!important;box-shadow:0 22px 48px #000b!important}
+.zebra-v8 .product-card .product-icon{display:none!important}
+.zebra-v8 .card h3{font-weight:650!important;letter-spacing:-.065em!important}
+.zebra-v8 .steps,.zebra-v8 .steps-grid{border:1px solid var(--line2)!important;background:var(--panel)!important;border-radius:14px!important;overflow:hidden}
+.zebra-v8 .step{background:var(--panel)!important;border-color:var(--line)!important}
+.zebra-v8 .step h3{font-weight:650!important}
+.zebra-v8 .footer{background:#000!important}
+.zebra-v8 .account-panel{background:#080808!important;border:1px solid #343434!important;box-shadow:0 35px 80px #000a!important}
+.zebra-v8 .dialog{background:#080808!important;border:1px solid #353535!important}
+.zebra-v8 .promo-notice{border-color:#313131!important;background:#080808!important}
+.zebra-v8 .editorial-grid{display:grid;grid-template-columns:1.14fr 1fr 1fr;gap:15px}
+.zebra-v8 .editorial-card{min-height:354px;display:flex;flex-direction:column;padding:23px;border:1px solid #303030;border-radius:15px;background:#080808;transition:transform .32s var(--fluid),border-color .32s}
+.zebra-v8 .editorial-card:hover{transform:translateY(-5px);border-color:#6b6b6b}
+.zebra-v8 .editorial-card small{font:500 10px 'Geist Mono',monospace;letter-spacing:.08em;color:#aaa}
+.zebra-v8 .editorial-art{flex:1;min-height:165px;margin:23px 0 15px;border:1px solid #272727;border-radius:11px;background:#050505;padding:15px;overflow:hidden}
+.zebra-v8 .terminal-title{border-bottom:1px solid #252525;padding:0 0 12px;display:flex;align-items:center;gap:6px}
+.zebra-v8 .terminal-title i{height:7px;width:7px;background:#6b6b6b;border-radius:50%}
+.zebra-v8 .terminal-title i:first-child{background:#dadada}
+.zebra-v8 .terminal-title span{font:9px 'Geist Mono',monospace;color:#aaa;margin-left:auto}
+.zebra-v8 .terminal-lines{font:11px/2 'Geist Mono',monospace;color:#999;margin-top:9px}
+.zebra-v8 .terminal-lines b{color:#eee;font-weight:550}
+.zebra-v8 .editorial-card h3{font:650 20px Geist!important;letter-spacing:-.055em;margin:12px 0 8px}
+.zebra-v8 .editorial-card p{font-size:12px;line-height:1.75;color:var(--muted);margin:0}
+.zebra-v8 .swatch-art{display:flex;align-items:center;justify-content:center;gap:9px;height:100%}
+.zebra-v8 .swatch-art i{width:22%;height:100px;max-width:70px;border-radius:9px;transform:rotate(-8deg);border:1px solid #ffffff15;box-shadow:0 8px 26px #000}
+.zebra-v8 .swatch-art i:nth-child(1){background:#eaeaea}.zebra-v8 .swatch-art i:nth-child(2){background:#999;transform:translateY(-13px) rotate(7deg)}.zebra-v8 .swatch-art i:nth-child(3){background:#555}.zebra-v8 .swatch-art i:nth-child(4){background:#151515;transform:translateY(-13px) rotate(6deg)}
+.zebra-v8 .status-art{height:100%;display:flex;flex-direction:column;gap:13px;justify-content:center}
+.zebra-v8 .status-art>div{font:11px 'Geist Mono',monospace;color:#bbb;display:flex;align-items:center;gap:9px}
+.zebra-v8 .status-art i{width:7px;height:7px;background:#ccc;border-radius:50%}
+.zebra-v8 .status-art span{margin-left:auto;color:#777}
+.zebra-v8 .reveal{transition:opacity .85s var(--ease),transform .85s var(--fluid),filter .7s!important}
+.zebra-v8 .reveal:not(.in){filter:blur(3px)}
+/* On narrow layouts the full-width studio stays readable instead of clipping. */
+@media(max-width:980px){
+ .zebra-v8 .hero{padding:134px 0 58px!important}
+ .zebra-v8 .hero-grid{gap:48px!important}
+ .zebra-v8 .hero h1{font-size:clamp(60px,10.5vw,105px)!important}
+ .zebra-v8 .visual-body,.zebra-v8 .window-body{grid-template-columns:165px minmax(0,1fr)!important}
+ .zebra-v8 .quality-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .zebra-v8 .quality-cell:nth-child(2){border-right:0!important}
+ .zebra-v8 .quality-cell:nth-child(-n+2){border-bottom:1px solid var(--line)}
+ .zebra-v8 .section-head,.zebra-v8 .section-heading{grid-template-columns:1fr!important;gap:22px!important}
+ .zebra-v8 .editorial-grid{grid-template-columns:1fr 1fr}
+ .zebra-v8 .editorial-card:first-child{grid-column:span 2}
+}
+@media(max-width:670px){
+ .zebra-v8 .hero{padding:122px 0 45px!important}
+ .zebra-v8 .hero h1{font-size:clamp(47px,11vw,70px)!important;letter-spacing:-.08em!important}
+ .zebra-v8 .atelier-pill{font-size:8px!important;gap:7px}
+ .zebra-v8 .hero-copy>p:not(.release-bridge-status){font-size:15px!important}
+ .zebra-v8 .product-stage,.zebra-v8 .studio-stage{padding:13px 11px 14px!important;border-radius:15px!important}
+ .zebra-v8 .stage-overline,.zebra-v8 .stage-label{font-size:8px!important;padding-bottom:13px!important}
+ .zebra-v8 .stage-overline .stage-note{display:none}
+ .zebra-v8 .visual-body,.zebra-v8 .window-body{grid-template-columns:82px minmax(0,1fr)!important;min-height:0!important}
+ .zebra-v8 .visual-sidebar,.zebra-v8 .window-side{padding:11px 4px!important}
+ .zebra-v8 .visual-sidebar-item,.zebra-v8 .window-side .side-option{font-size:9px!important;height:auto!important;padding:9px 4px!important;gap:5px!important;white-space:normal!important}
+ .zebra-v8 .visual-sidebar .side-label,.zebra-v8 .window-side .side-heading{font-size:7px!important;margin:8px 3px!important}
+ .zebra-v8 .visual-sidebar .side-version{display:none}
+ .zebra-v8 .studio-toolbar{min-height:36px;padding:0 11px!important}.zebra-v8 .studio-toolbar .status{font-size:8px}
+ .zebra-v8 .studio-body{padding:13px 9px!important}
+ .zebra-v8 .visual-content-top h3,.zebra-v8 .window-content h3{font-size:17px!important}
+ .zebra-v8 .visual-content-top p{font-size:9px!important}
+ .zebra-v8 .visual-status{display:none!important}
+ .zebra-v8 .visual-stats,.zebra-v8 .metric-row{gap:5px!important}
+ .zebra-v8 .visual-stats>div,.zebra-v8 .metric-row>div{padding:8px 5px!important;min-height:78px}
+ .zebra-v8 .visual-stats b,.zebra-v8 .metric-row b{font-size:13px!important;margin:6px 0!important}
+ .zebra-v8 .visual-stats span,.zebra-v8 .metric-row small{font-size:7px!important}
+ .zebra-v8 .visual-stats small{font-size:7px!important}
+ .zebra-v8 .preview-tabs button{font-size:9px!important;padding:8px 7px!important}
+ .zebra-v8 .preview-row{padding:10px 7px!important}
+ .zebra-v8 .preview-row-copy strong{font-size:9px!important}.zebra-v8 .preview-row-copy span{font-size:8px!important}
+ .zebra-v8 .preview-row-pill{font-size:7px!important}
+ .zebra-v8 .quality-strip{grid-template-columns:1fr 1fr}.zebra-v8 .quality-cell{padding:15px 12px}.zebra-v8 .quality-cell strong{font-size:12px}
+ .zebra-v8 .editorial-grid{grid-template-columns:1fr}.zebra-v8 .editorial-card:first-child{grid-column:auto}
+ .zebra-v8 .editorial-card{min-height:300px}
+ .zebra-v8 .nav-links{display:none!important}
+}
+@media(prefers-reduced-motion:reduce){.zebra-v8 *, .zebra-v8 *:before,.zebra-v8 *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+ .zebra-v8 .reveal:not(.in){opacity:1!important;filter:none!important;transform:none!important}
+ .zebra-v8 .card:hover,.zebra-v8 .product-card:hover,.zebra-v8 .bundle-card:hover{transform:none!important}}
