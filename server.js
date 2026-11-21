@@ -11,6 +11,7 @@ import {readSealed,hasSealed} from './vault.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
+import { discountQuote } from './discounts.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -74,7 +75,9 @@ async function grantFromStripe(session){
  const order=(await query('SELECT * FROM purchases WHERE session_id=$1',[session.id]))[0];
  if(!order||!byId[order.sku]||order.status==='revoked')return false;
  if(session.client_reference_id!==order.user_id||session.metadata?.user_id!==order.user_id||session.metadata?.sku!==order.sku)return false;
- if(Number(session.amount_total)!==Number(order.amount)||Number(order.amount)!==byId[order.sku].price)return false;
+ // The paid Stripe amount must match a server-created, validated discounted order.
+ const quoted=discountQuote(byId[order.sku],String(session.metadata?.promo_code||''));
+ if(!quoted.ok||Number(order.amount)!==quoted.total||Number(session.amount_total)!==quoted.total)return false;
  // Verify the charge has not already been refunded or disputed before granting access.
  if(!session.payment_intent)return false;
  const intent=await stripe.paymentIntents.retrieve(typeof session.payment_intent==='object'?session.payment_intent.id:session.payment_intent,{expand:['latest_charge']});
@@ -102,6 +105,15 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
 });
 app.use(express.json({limit:'20kb'}));app.use('/api',validateOrigin);
 app.get('/api/store',(_req,res)=>res.json(publicState()));
+// Public price preview only. Stripe always receives the server-validated amount.
+const quoteLimiter=rateLimit({windowMs:15*60*1000,limit:80,standardHeaders:'draft-7',legacyHeaders:false});
+app.get('/api/discount/quote',quoteLimiter,(req,res)=>{
+ const item=byId[String(req.query.sku||'')];
+ if(!item||item.unavailable)return res.status(404).json({error:'Product not available.'});
+ const quote=discountQuote(item,req.query.code);
+ if(!quote.ok)return res.status(400).json({error:quote.error});
+ res.json(quote);
+});
 app.get('/api/me',async(req,res)=>{try{const u=await fetchUser(req);res.json({user:u});}catch(e){safeError(res,e);}});
 // Passwordless sign-in. 6-digit email codes are single-use, valid for 10 minutes,
 // rate-limited by both IP and email, and are never returned in HTTP responses.
@@ -146,16 +158,18 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
  if(!checkoutReady())return res.status(503).json({error:'Checkout is not configured. No payment was taken.'});
  if(req.body?.accepted_terms!==true)return res.status(400).json({error:'Please accept store terms before purchase.'});
  const sku=String(req.body?.sku||''),item=byId[sku];if(!item||!Number.isInteger(item.price)||item.price<50||item.unavailable&&sku!=='checkout-test'||sku==='checkout-test'&&!testCheckoutReady()||sku!=='checkout-test'&&includedIds(item).some(id=>{const entry=byId[id];return !entry?.file||!hasSealed(SCRIPT_DIR,entry.file);}))return res.status(400).json({error:'Product is not available for paid checkout yet.'});
+ const quote=discountQuote(item,req.body?.discount_code);
+ if(!quote.ok)return res.status(400).json({error:quote.error});
  try{
   const session=await stripe.checkout.sessions.create({
    mode:'payment',customer_email:req.user.email,client_reference_id:req.user.id,
-   line_items:[{price_data:{currency:'usd',unit_amount:item.price,product_data:{name:item.title,description:item.description.slice(0,400)}},quantity:1}],
-   metadata:{sku,user_id:req.user.id},payment_intent_data:{metadata:{sku,user_id:req.user.id}},
-   success_url:`${SITE.origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${SITE.origin}/?checkout=cancel`,
+   line_items:[{price_data:{currency:'usd',unit_amount:quote.total,product_data:{name:item.title,description:item.description.slice(0,400)}},quantity:1}],
+   metadata:{sku,user_id:req.user.id,promo_code:quote.code||''},payment_intent_data:{metadata:{sku,user_id:req.user.id,promo_code:quote.code||''}},
+   success_url:`${SITE.origin}/account/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${SITE.origin}/scripts/?checkout=cancel`,
    expires_at:Math.floor(Date.now()/1000)+60*60
   });
-  await query('INSERT INTO purchases (session_id,user_id,sku,amount,status,created_at) VALUES ($1,$2,$3,$4,$5,$6)',[session.id,req.user.id,sku,item.price,'pending',now()]);
-  res.json({url:session.url});
+  await query('INSERT INTO purchases (session_id,user_id,sku,amount,status,created_at) VALUES ($1,$2,$3,$4,$5,$6)',[session.id,req.user.id,sku,quote.total,'pending',now()]);
+  res.json({url:session.url,code:quote.code,amount:quote.total});
  }catch(e){safeError(res,e);}
 });
 app.post('/api/confirm',checkoutLimiter,requireUser,async(req,res)=>{
