@@ -2,7 +2,7 @@
   "name": "zebras-bl-scripts",
   "version": "2.0.0",
   "private": true,
-  "description": "Zebra's BL Scripts \u2014 Stripe-entitled, license-based Lua loaders",
+  "description": "Zebra's BL Scripts — Stripe-entitled, license-based Lua loaders",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -11,7 +11,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test tests/*.test.js",
-    "obfuscate": "node scripts/build-payloads.mjs"
+    "obfuscate": "node scripts/build-payloads.mjs",
+    "prestart": "node --check server.js && node --check public/app.js && node --check public/account/account.js && node --check email-delivery.js"
   },
   "dependencies": {
     "express": "^4.21.2",
