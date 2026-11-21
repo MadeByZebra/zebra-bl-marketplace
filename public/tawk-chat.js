@@ -15,6 +15,9 @@
   }
   function updateOpened(isOpen) {
     opening = isOpen;
+    // Prevent scroll chaining from the chat iframe into the shop document.
+    // The tawk conversation itself continues to scroll independently.
+    document.documentElement.classList.toggle('zebra-chat-scroll-locked', isOpen);
     if (trigger) {
       trigger.classList.toggle('is-open', isOpen);
       trigger.setAttribute('aria-expanded', String(isOpen));
@@ -86,6 +89,16 @@
       }
     });
     document.body.appendChild(trigger);
+
+    // Email is a separate no-cost support channel; tawk.to stays available
+    // for AI Assist, visitor monitoring and manual takeover in its inbox.
+    const emailLink = document.createElement('a');
+    emailLink.className = 'zebra-support-email';
+    emailLink.href = 'mailto:' + supportEmail + '?subject=Zebra%27s%20Shop%20support';
+    emailLink.setAttribute('aria-label', 'Email Zebra Support');
+    emailLink.title = 'Email Zebra Support';
+    emailLink.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg><span>EMAIL SUPPORT</span>';
+    document.body.appendChild(emailLink);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildTrigger);
