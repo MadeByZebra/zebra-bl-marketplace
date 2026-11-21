@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {activeMailer,mailerMode,sendShopEmail,receiptEmail} from '../email-delivery.js';
+import {activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail} from '../email-delivery.js';
 const send=async(url,args)=>({ok:true,status:201,json:async()=>({id:'queued'})});
 test('prefer activated Brevo configuration over Resend sandbox',()=>{
  const env={BREVO_API_KEY:'test-key',BREVO_FROM_EMAIL:'seller@gmail.com',
@@ -45,4 +45,35 @@ test('purchase confirmation contains paid amount and account URL but no sensitiv
  assert.match(m,/\/account\//);
  assert.match(m,/pay\.stripe\.com\/receipts/);
  assert.doesNotMatch(m,/sk_live_|ZEBRA_PAYLOAD_KEY|123456/);
+});
+
+test('Brevo credential check does not send mail or disclose account details',async()=>{
+ let method=null,url=null;
+ const status=await verifyEmailProvider({BREVO_API_KEY:'dummy',BREVO_FROM_EMAIL:'owner@example.com'},async(u,init)=>{
+  method=init.method;url=u;
+  return {ok:true,status:200,json:async()=>{throw new Error('account response should never be inspected');}};
+ });
+ assert.equal(method,'GET');
+ assert.equal(url,'https://api.brevo.com/v3/account');
+ assert.deepEqual(status,{provider:'brevo',auth:'authorized'});
+});
+test('Brevo unauthorized, forbidden, or network errors produce safe statuses',async()=>{
+ const env={BREVO_API_KEY:'dummy',BREVO_FROM_EMAIL:'owner@example.com'};
+ const denied=await verifyEmailProvider(env,async()=>({ok:false,status:401}));
+ assert.deepEqual(denied,{provider:'brevo',auth:'unauthorized'});
+ const blocked=await verifyEmailProvider(env,async()=>({ok:false,status:403}));
+ assert.equal(blocked.auth,'forbidden');
+ const offline=await verifyEmailProvider(env,async()=>{throw new Error('network timeout')});
+ assert.equal(offline.auth,'network_error');
+});
+test('Brevo 401 send failure provides actionable message without exposing the API key',async()=>{
+ const env={BREVO_API_KEY:'private-key-do-not-expose',BREVO_FROM_EMAIL:'owner@example.com'};
+ await assert.rejects(sendShopEmail({
+  to:'buyer@example.com',subject:'Code',text:'code',env,
+  fetchImpl:async()=>({ok:false,status:401})
+ }),err=>{
+  assert.match(err.message,/API key \(401\)/);
+  assert.ok(!err.message.includes(env.BREVO_API_KEY));
+  return true;
+ });
 });
