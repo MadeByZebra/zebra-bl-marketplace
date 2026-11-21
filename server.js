@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
 import { discountQuote } from './discounts.js';
+import { getOtpKey,hashEmailOtp } from './email-otp.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -40,8 +41,8 @@ async function query(sql,values=[]){
 async function init(){for(const sql of schema)await query(sql);}
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const emailValid = email => email.length<=254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const codeHash=(email,code)=>sha(`${process.env.OTP_SECRET||'UNCONFIGURED'}:${email}:${code}`);
-const mailReady=()=>!!(process.env.RESEND_API_KEY&&process.env.MAIL_FROM&&process.env.OTP_SECRET&&process.env.OTP_SECRET.length>=32);
+const codeHash=(email,code)=>hashEmailOtp(email,code);
+const mailReady=()=>!!(process.env.RESEND_API_KEY&&process.env.MAIL_FROM&&getOtpKey());
 const emailAuthLimiter=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false});
 const now=()=>Date.now();
 const makeHash=password=>{const salt=randomBytes(16).toString('hex');return `${salt}:${scryptSync(password,salt,64).toString('hex')}`;};
