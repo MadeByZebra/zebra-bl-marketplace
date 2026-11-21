@@ -19,6 +19,7 @@ import { buyerLoadstring } from './github-loader.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
 import {validateSupportRequest,supportEmailContent} from './support-request.js';
+import {registerZebraChat,zebraChatSchema} from './zebra-chat-server.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -54,6 +55,8 @@ const schema=[
  `CREATE UNIQUE INDEX IF NOT EXISTS licenses_one_active_per_product ON licenses (user_id,sku) WHERE revoked_at IS NULL`,
  `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`,
  `CREATE TABLE IF NOT EXISTS free_promo_redemptions (user_id TEXT PRIMARY KEY REFERENCES users(id), sku TEXT NOT NULL, session_id TEXT UNIQUE NOT NULL, created_at BIGINT NOT NULL, redeemed_at BIGINT)`
+,
+ ...zebraChatSchema
 ];
 async function query(sql,values=[]){
  if(pool){const r=await pool.query(sql,values);return r.rows;}
@@ -249,6 +252,8 @@ app.use(express.json({limit:'20kb'}));app.use('/api',validateOrigin);
 // First-party customer contact form. The browser cannot choose the recipient,
 // and no mail app or paid support platform is required to submit a request.
 // Successful API acceptance means the mail provider accepted it, not guaranteed inbox delivery.
+// First-party support chat; real admin replies require the signed-in support account.
+registerZebraChat({app,query,fetchUser,sendShopEmail,supportEmail:()=>process.env.SUPPORT_EMAIL||''});
 app.post('/api/support/request',supportFormLimiter,async(req,res)=>{
  const input=validateSupportRequest(req.body);
  if(!input.ok)return res.status(400).json({ok:false,error:input.error});
