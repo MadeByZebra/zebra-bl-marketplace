@@ -48,7 +48,7 @@ function viewProduct(id){const p=findItem(id);if(!p)return;
   const button=$('#applyDiscount');button.disabled=true;
   try{
    const q=await api('/api/discount/quote?sku='+encodeURIComponent(p.id)+'&code='+encodeURIComponent(promoField.value.trim()));
-   promoFeedback.textContent=q.saved>0?q.code+' applied — '+money(q.total)+' (you save '+money(q.saved)+').':'Regular price: '+money(q.total);
+   promoFeedback.textContent=q.free?'100% OFF — FREE! Stripe Checkout will verify your $0 order; one free order per account.':q.saved>0?q.code+' applied — '+money(q.total)+' (you save '+money(q.saved)+').':'Regular price: '+money(q.total);
   }catch(e){promoFeedback.textContent=e.message;}finally{button.disabled=false;}
  });
  $('#purchaseNow')?.addEventListener('click',()=>{
@@ -64,7 +64,7 @@ async function purchase(id){const p=findItem(id);if(!p||p.unavailable)return;
  const b=$('#purchaseNow');if(b){b.disabled=true;b.textContent='VERIFYING TOTAL...';}
  try{
   const quote=await api('/api/discount/quote?sku='+encodeURIComponent(id)+'&code='+encodeURIComponent(discountCode));
-  if(quote.saved>0)$('#discountFeedback').textContent=quote.code+' applied · Total: '+money(quote.total);
+  if(quote.saved>0)$('#discountFeedback').textContent=quote.free?'100% OFF · $0.00 total · No card charge after completed Stripe Checkout':quote.code+' applied · Total: '+money(quote.total);
   const {url}=await api('/api/checkout',{method:'POST',body:JSON.stringify({sku:id,accepted_terms:true,discount_code:discountCode})});
   window.location.assign(url);
  }catch(e){toast(e.message);if(b){b.disabled=false;b.textContent='PURCHASE SECURELY ↗';}}
