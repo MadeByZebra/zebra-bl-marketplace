@@ -26,20 +26,27 @@
   // All customer-facing support email links use one consistent draft.
   // This covers the footer, help articles, legal pages and any link inserted
   // later by the storefront's product/policy dialogs.
+  const supportFormLink = '/support/#contact';
   const supportEmailSelector = 'a[href^="mailto:zebrablshopofficial@gmail.com" i], a[data-zebra-email-support]';
   function updateEmailSupportLinks(root) {
     if (!root?.querySelectorAll) return;
     root.querySelectorAll(supportEmailSelector).forEach(function (link) {
-      link.href = supportComposeLink;
+      // Only the explicitly marked fallback opens the visitor's mail app.
+      // All normal support buttons open the working in-page contact form.
+      if (link.hasAttribute('data-zebra-email-client')) {
+        link.href = supportComposeLink;
+        return;
+      }
+      link.href = supportFormLink;
       if (!link.getAttribute('aria-label')) {
-        link.setAttribute('aria-label', 'Compose email to Zebra Support');
+        link.setAttribute('aria-label', 'Open the Zebra Support email form');
       }
     });
   }
   document.addEventListener('click', function (event) {
     const element = event.target instanceof Element ? event.target : null;
     const link = element?.closest(supportEmailSelector);
-    if (link) link.href = supportComposeLink;
+    if (link) link.href = link.hasAttribute('data-zebra-email-client') ? supportComposeLink : supportFormLink;
   }, true);
 
   let loaded = false;
@@ -116,7 +123,7 @@
       else if (loaded) showChat();
       else {
         // Never leave visitors stranded if the external chat is unavailable.
-        if (requested) window.location.href = supportComposeLink;
+        if (requested) window.location.href = supportFormLink;
         else {
           requested = true;
           setLabel('CONNECTING…');
@@ -132,9 +139,9 @@
     // for AI Assist, visitor monitoring and manual takeover in its inbox.
     const emailLink = document.createElement('a');
     emailLink.className = 'zebra-support-email';
-    emailLink.href = supportComposeLink;
-    emailLink.setAttribute('aria-label', 'Email Zebra Support');
-    emailLink.title = 'Open a ready-to-send email in your default mail app';
+    emailLink.href = supportFormLink;
+    emailLink.setAttribute('aria-label', 'Open Zebra Support email contact form');
+    emailLink.title = 'Send a message to Zebra Support without an email app';
     emailLink.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg><span>EMAIL SUPPORT</span>';
     document.body.appendChild(emailLink);
     updateEmailSupportLinks(document);
