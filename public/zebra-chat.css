@@ -108,3 +108,57 @@ html.zebra-chat-scroll-locked .zebra-support-email { visibility:hidden; pointer-
   .zebra-support-email svg{width:21px;height:21px}
 }
 @media(prefers-reduced-motion:reduce){.zebra-support-email{transition:none}}
+
+
+/* Consistent customer support actions on every store section. */
+.zebra-footer-help .zebra-footer-email-link {
+  border:1px solid #414141;
+  border-radius:9px;
+  padding:9px 13px;
+  background:#111;
+  color:#fff;
+  font-weight:700;
+  text-decoration:none;
+}
+.zebra-footer-help .zebra-footer-email-link:hover { background:#252525; border-color:#999; }
+.zebra-support-inline-link { color:inherit; text-decoration:underline; text-underline-offset:3px; }
+.zebra-inline-support-cta {
+  width:min(1120px,calc(100% - 32px));
+  margin:36px auto 48px;
+  padding:24px 27px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  border:1px solid #343434;
+  border-radius:15px;
+  background:#0c0c0c;
+  color:#f2f2f2;
+  box-shadow:0 8px 35px rgba(0,0,0,.18);
+}
+.zebra-inline-support-cta>div:first-child { min-width:0;max-width:680px; }
+.zebra-inline-support-cta strong {
+  font:700 17px/1.3 Inter,Geist,system-ui,sans-serif;
+  letter-spacing:-.025em;color:#fff;
+}
+.zebra-inline-support-cta p { color:#aaa;margin:8px 0 0;font:400 13px/1.65 Inter,Geist,system-ui,sans-serif; }
+.zebra-inline-support-actions { display:flex;flex-wrap:wrap;gap:9px;flex:none; }
+.zebra-inline-support-actions a {
+  display:inline-flex;justify-content:center;align-items:center;
+  border:1px solid #474747;border-radius:10px;
+  background:#1b1b1b;color:#f5f5f5!important;
+  padding:11px 15px;
+  font:650 12px/1.3 Inter,Geist,system-ui,sans-serif;
+  text-decoration:none!important;
+}
+.zebra-inline-support-actions a:hover { border-color:#999;background:#252525; }
+.zebra-inline-support-actions .zebra-inline-email {
+  color:#101010!important;background:#f0f0f0;border-color:#f0f0f0;
+}
+.zebra-inline-support-actions .zebra-inline-email:hover { background:#ccc;color:#101010!important; }
+.zebra-inline-support-actions a:focus-visible { outline:2px solid #fff;outline-offset:3px; }
+@media(max-width:760px){
+  .zebra-inline-support-cta {flex-direction:column;align-items:stretch;padding:19px;gap:16px;margin:24px auto 36px;}
+  .zebra-inline-support-actions{flex:none;flex-wrap:wrap;}
+  .zebra-inline-support-actions a{flex:1;white-space:nowrap;font-size:11px;}
+}
