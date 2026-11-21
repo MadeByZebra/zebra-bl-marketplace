@@ -59,7 +59,7 @@ function viewProduct(id){const p=findItem(id);if(!p)return;
 }
 async function purchase(id){const p=findItem(id);if(!p||p.unavailable)return;
  const discountCode=String($('#discountCode')?.value||'').trim().toUpperCase();
- if(!state.checkout_ready){toast('Checkout is not configured. No payment was taken.');return;}
+ if(!state.checkout_ready){toast(state.checkout_message||'Checkout is paused while Stripe testing is completed. No payment was taken.');return;}
  if(!state.user){state.pendingProduct=id;state.pendingDiscount=discountCode;closeDialogs();openAuth();toast('Sign in by email to purchase.');return;}
  const b=$('#purchaseNow');if(b){b.disabled=true;b.textContent='VERIFYING TOTAL...';}
  try{
