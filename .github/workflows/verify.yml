@@ -1,0 +1,36 @@
+name: Marketplace security and integration checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout deploy-safe source
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run unit and security regression tests
+        run: npm test
+      - name: Source must not contain runtime secrets
+        shell: bash
+        run: |
+          if grep -rE --include='*.js' --include='*.html' --include='*.env'             '(sk_live_[0-9A-Za-z]{12,}|sk_test_[0-9A-Za-z]{12,}|whsec_[0-9A-Za-z]{12,}|re_[0-9A-Za-z]{20,})' public/ tests/ .env.example 2>/dev/null; then
+            echo 'Potential secret exposed in public source'
+            exit 1
+          fi
+          if find public -type f \( -name '*.lua' -o -name '*.sealed' -o -name '*.exe' \) | grep -q .; then
+            echo 'Private payload present in web-served public folder'
+            exit 1
+          fi
