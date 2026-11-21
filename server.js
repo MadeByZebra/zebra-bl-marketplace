@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
 import { discountQuote } from './discounts.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
-import { activeMailer,mailerMode,sendShopEmail,receiptEmail } from './email-delivery.js';
+import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -45,6 +45,12 @@ const sha=s=>createHash('sha256').update(s).digest('hex');
 const emailValid = email => email.length<=254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const codeHash=(email,code)=>hashEmailOtp(email,code);
 const mailReady=()=>!!(activeMailer()&&getOtpKey());
+let providerAuth='not_checked'; // No secret or account data is retained.
+async function checkProviderOnStartup(){
+ const info=await verifyEmailProvider();
+ providerAuth=info.auth;
+ console.log('Email provider diagnostic:',info.provider,info.auth);
+}
 const emailAuthLimiter=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false});
 const now=()=>Date.now();
 const makeHash=password=>{const salt=randomBytes(16).toString('hex');return `${salt}:${scryptSync(password,salt,64).toString('hex')}`;};
@@ -76,7 +82,7 @@ function checkoutStatus(){
  if(!checkoutReady())return 'Payments are not available yet. No charge was made.';
  return null;
 }
-function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',email_login_ready:mailReady()&&usingPostgres,email_sender_mode:mailerMode(),checkout_message:checkoutStatus(),support_email:process.env.SUPPORT_EMAIL||null,catalog};}
+function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,checkout_message:checkoutStatus(),support_email:process.env.SUPPORT_EMAIL||null,catalog};}
 function safeError(res,err,code=500){console.error(err);return res.status(code).json({error:'Request could not be completed.'});}
 async function fetchUser(req){
  const token=parseCookie(req.headers.cookie,'bl_session');if(!token||!/^[a-f0-9]{64}$/.test(token))return null;
@@ -339,7 +345,7 @@ app.get('/api/health',(_req,res)=>{
  res.json({
   ok:true,service:'zebra-store',checkout:checkoutReady()?'configured':'disabled',
   mode:testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unconfigured',
-  email_login_ready:mailReady()&&usingPostgres,email_sender_mode:mailerMode(),
+  email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
   stripe_api_ready:!!stripe,webhook_configured:!!webSecret,
   postgres_ready:usingPostgres,vault_ready:vaultReady,
   disabled_by_owner:process.env.DISABLE_CHECKOUT==='1'
@@ -347,5 +353,5 @@ app.get('/api/health',(_req,res)=>{
 });
 app.use(express.static(path.join(ROOT,'public'),{index:'index.html',dotfiles:'deny',setHeaders:r=>r.setHeader('Cache-Control','public,max-age=300')}));
 app.get('*',(_req,res)=>res.sendFile(path.join(ROOT,'public','index.html')));
-init().then(()=>app.listen(PORT,'0.0.0.0',()=>console.log(`BL Scripts Marketplace at ${SITE.origin}; checkout ${checkoutReady()?'READY':'LOCKED'}`))).catch(e=>{console.error('Database initialization failed',e);process.exit(1);});
+init().then(()=>{app.listen(PORT,'0.0.0.0',()=>console.log(`BL Scripts Marketplace at ${SITE.origin}; checkout ${checkoutReady()?'READY':'LOCKED'}`));checkProviderOnStartup().catch(()=>console.warn('Email provider diagnostic unavailable'));}).catch(e=>{console.error('Database initialization failed',e);process.exit(1);});
 export {app,checkoutReady,grantFromStripe};
