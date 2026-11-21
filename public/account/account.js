@@ -55,10 +55,19 @@
   function renderLibrary(owned,catalog,orders=[]){
     const container=$('libraryItems');
     container.replaceChildren();
-    if(!owned?.length)container.append(element('p','No purchases yet. Your verified products will appear here.','account-status'));
-    for(const sku of owned||[]){
+    const licensedItems=(owned||[]).filter(sku=>{
       const product=catalogItem(catalog,sku);
-      if(!product||product.testOnly)continue;
+      return product&&!product.testOnly;
+    });
+    if(!licensedItems.length){
+      const sandboxOrder=(orders||[]).some(order=>catalogItem(catalog,order.sku)?.testOnly);
+      container.append(element('p',sandboxOrder
+        ? 'Sandbox payment verified. No software license is included with this diagnostic purchase.'
+        : 'No purchases yet. Your verified products will appear here.','account-status'));
+    }
+    for(const sku of licensedItems){
+      const product=catalogItem(catalog,sku);
+      if(!product)continue;
       const row=element('div',undefined,'library-item');
       const info=element('div');
       info.append(element('strong',product.title),element('span',product.kind==='download'?'Protected installer':'Licensed loadstring'));
@@ -99,15 +108,19 @@
     container.append(heading);
     for(const order of orders){
       const product=catalogItem(catalog,order.sku);
-      if(!product||product.testOnly)continue;
+      if(!product)continue;
       const row=element('div',undefined,'library-item');
       const info=element('div');
+      const orderNote=product.testOnly?' · STRIPE SANDBOX TEST · No real charge':
+        Number(order.amount)===0?' · Free promotional order':' · Paid';
       info.append(
         element('strong',product.title),
-        element('span',dateLabel(order.paid_at)+' · '+priceLabel(order.amount)+(Number(order.amount)===0?' · Free promotional order':' · Paid'))
+        element('span',dateLabel(order.paid_at)+' · '+priceLabel(order.amount)+orderNote)
       );
       row.append(info);
-      if(Number(order.amount)>0&&typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
+      if(product.testOnly){
+        row.append(element('span','TEST PASSED','account-status'));
+      }else if(Number(order.amount)>0&&typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
         const receipt=link('/api/receipt/'+encodeURIComponent(order.session_id),'Stripe receipt ↗');
         receipt.target='_blank';
         receipt.rel='noopener noreferrer';
