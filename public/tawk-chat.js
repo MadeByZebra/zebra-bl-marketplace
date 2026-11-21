@@ -19,7 +19,7 @@
     'Please do not include passwords, login codes or payment card details.',
     '',
     'Thank you.'
-  ].join('\\r\\n');
+  ].join(String.fromCharCode(13, 10));
   const supportComposeLink = 'mailto:' + supportEmail
     + '?subject=' + encodeURIComponent(supportSubject)
     + '&body=' + encodeURIComponent(supportBody);
