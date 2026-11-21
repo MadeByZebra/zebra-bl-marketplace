@@ -40,6 +40,14 @@
     updateOpened(false);
   }
 
+  // tawk.to documents onBeforeLoad as firing before the native widget renders.
+  // Hide its default launcher at that stage (rather than after onLoad) so it
+  // cannot briefly flash above our branded Zebra Support button on refresh.
+  // Keep the connection active so live visitor monitoring continues to work.
+  api.onBeforeLoad = function () {
+    if (typeof api.hideWidget === 'function') api.hideWidget();
+  };
+
   api.onLoad = function () {
     loaded = true;
     if (typeof api.hideWidget === 'function') api.hideWidget();
