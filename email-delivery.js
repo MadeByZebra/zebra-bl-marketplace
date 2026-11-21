@@ -3,9 +3,27 @@
 // activated, verified sender without requiring us to migrate the website.
 // Do not put provider keys, OTPs, or receipt secrets in public files.
 export function activeMailer(env=process.env){
- if(env.BREVO_API_KEY&&env.BREVO_FROM_EMAIL)return 'brevo';
+ if(String(env.BREVO_API_KEY||'').trim()&&String(env.BREVO_FROM_EMAIL||'').trim())return 'brevo';
  if(env.RESEND_API_KEY&&env.MAIL_FROM)return 'resend';
  return null;
+}
+// Check server-to-Brevo API authentication without sending an email, logging
+// secret data, reading account details or changing any customer records.
+export async function verifyEmailProvider(env=process.env,fetchImpl=fetch){
+ const provider=activeMailer(env);
+ if(provider==='resend')return {provider,auth:'not_checked'};
+ if(provider!=='brevo')return {provider:'none',auth:'not_configured'};
+ try{
+  const response=await fetchImpl('https://api.brevo.com/v3/account',{
+   method:'GET',headers:{'api-key':String(env.BREVO_API_KEY||'').trim(),'accept':'application/json'},
+   signal:AbortSignal.timeout(9000)
+  });
+  if(response.ok)return {provider,auth:'authorized'};
+  if(response.status===401)return {provider,auth:'unauthorized'};
+  if(response.status===403)return {provider,auth:'forbidden'};
+  if(response.status===429)return {provider,auth:'rate_limited'};
+  return {provider,auth:'http_'+String(response.status)};
+ }catch(_e){return {provider,auth:'network_error'};}
 }
 export function mailerMode(env=process.env){
  const p=activeMailer(env);
@@ -26,9 +44,9 @@ export async function sendShopEmail({to,subject,text,html,idempotencyKey,env=pro
  let url,headers,body;
  if(type==='brevo'){
   url='https://api.brevo.com/v3/smtp/email';
-  headers={'Content-Type':'application/json','api-key':env.BREVO_API_KEY,'accept':'application/json'};
+  headers={'Content-Type':'application/json','api-key':String(env.BREVO_API_KEY).trim(),'accept':'application/json'};
   const name=String(env.BREVO_FROM_NAME||"Zebra's Shop").slice(0,80);
-  body={sender:{name,email:env.BREVO_FROM_EMAIL},to:[{email:to}],subject,textContent:text};
+  body={sender:{name,email:String(env.BREVO_FROM_EMAIL).trim()},to:[{email:to}],subject,textContent:text};
   if(html)body.htmlContent=html;
  }else{
   url='https://api.resend.com/emails';
@@ -39,10 +57,16 @@ export async function sendShopEmail({to,subject,text,html,idempotencyKey,env=pro
  }
  const response=await fetchImpl(url,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
  if(!response.ok){
-  const error=new Error(type==='resend'&&response.status===403&&
-    mailerMode(env)==='resend_test_only'?
+  const reason=type==='brevo'&&response.status===401?
+    'Brevo rejected the server API key (401). The shop owner must check the API key and Brevo Authorized IP settings.':
+    type==='brevo'&&response.status===403?
+    'Brevo is denying access (403). Check sender verification, account activation, permissions and authorized IPs.':
+    type==='brevo'&&response.status===400?
+    'Brevo rejected the email settings. The shop owner must verify the sender address and transactional sending status.':
+    type==='resend'&&response.status===403&&mailerMode(env)==='resend_test_only'?
     'This shop is still using Resend testing mode. Other email addresses cannot receive sign-in codes until a public mail provider is enabled.':
-    'The email provider rejected the send request. Check sender verification and transactional sending status.');
+    'The email provider rejected the request. Check provider activation and sender configuration.';
+  const error=new Error(reason);
   error.code='MAIL_DELIVERY_FAILED';error.status=response.status;throw error;
  }
  return {accepted:true,provider:type};
