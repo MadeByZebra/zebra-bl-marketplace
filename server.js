@@ -265,17 +265,41 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
  const sku=String(req.body?.sku||''),item=byId[sku];if(!item||!Number.isInteger(item.price)||item.price<50||item.unavailable&&sku!=='checkout-test'||sku==='checkout-test'&&!testCheckoutReady()||sku!=='checkout-test'&&includedIds(item).some(id=>{const entry=byId[id];return !entry?.file||!hasSealed(SCRIPT_DIR,entry.file);}))return res.status(400).json({error:'Product is not available for paid checkout yet.'});
  const quote=quoteFor(item,req.body?.discount_code);
  if(!quote.ok)return res.status(400).json({error:quote.error});
+ // A $0 checkout must use a Stripe coupon and receive an actual completed
+ // Stripe Checkout Session. No fabricated "paid" records or client-side unlocks.
+ let freeReservation=null;
  try{
-  const session=await stripe.checkout.sessions.create({
+  if(quote.free){
+   freeReservation=await reserveFreePromo(req.user.id,sku);
+   if(!freeReservation)return res.status(409).json({error:'This account already has a free-promotion reservation or redemption. Each account may claim one free order.'});
+  }
+  const sessionData={
    mode:'payment',customer_email:req.user.email,client_reference_id:req.user.id,
-   line_items:[{price_data:{currency:'usd',unit_amount:quote.total,product_data:{name:item.title,description:item.description.slice(0,400)}},quantity:1}],
-   metadata:{sku,user_id:req.user.id,promo_code:quote.code||''},payment_intent_data:{metadata:{sku,user_id:req.user.id,promo_code:quote.code||''}},
-   success_url:`${SITE.origin}/account/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${SITE.origin}/scripts/?checkout=cancel`,
+   line_items:[{price_data:{currency:'usd',unit_amount:quote.free?item.price:quote.total,
+      product_data:{name:item.title,description:item.description.slice(0,400)}},quantity:1}],
+   metadata:{sku,user_id:req.user.id,promo_code:quote.code||'',free_promo:quote.free?'v1':'no'},
+   success_url:`${SITE.origin}/account/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+   cancel_url:`${SITE.origin}/scripts/?checkout=cancel`,
    expires_at:Math.floor(Date.now()/1000)+60*60
-  });
+  };
+  if(quote.free){
+   const coupon=await ensureFreeCoupon();
+   if(!coupon?.valid||coupon.percent_off!==100)throw new Error('Complimentary checkout coupon is unavailable.');
+   sessionData.discounts=[{coupon:coupon.id}];
+   sessionData.payment_method_collection='if_required';
+  }else{
+   sessionData.payment_intent_data={metadata:{sku,user_id:req.user.id,promo_code:quote.code||''}};
+  }
+  const session=await stripe.checkout.sessions.create(sessionData);
   await query('INSERT INTO purchases (session_id,user_id,sku,amount,status,created_at) VALUES ($1,$2,$3,$4,$5,$6)',[session.id,req.user.id,sku,quote.total,'pending',now()]);
-  res.json({url:session.url,code:quote.code,amount:quote.total});
- }catch(e){safeError(res,e);}
+  if(freeReservation){
+   await query('UPDATE free_promo_redemptions SET session_id=$1 WHERE user_id=$2 AND session_id=$3',[session.id,req.user.id,freeReservation]);
+  }
+  res.json({url:session.url,code:quote.code,amount:quote.total,free:!!quote.free});
+ }catch(e){
+  if(freeReservation)await query('DELETE FROM free_promo_redemptions WHERE user_id=$1 AND session_id=$2',[req.user.id,freeReservation]).catch(()=>{});
+  safeError(res,e);
+ }
 });
 app.post('/api/confirm',checkoutLimiter,requireUser,async(req,res)=>{
  const sessionId=String(req.body?.session_id||'');if(!/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(sessionId))return res.status(400).json({error:'Invalid checkout reference.'});
