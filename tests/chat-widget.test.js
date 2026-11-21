@@ -47,19 +47,19 @@ test('the same support button provides separate free email support',()=>{
 });
 
 
-test('email support button opens the visitor mail app with to subject and body prefilled',()=>{
-  const src=readFileSync(new URL('../public/tawk-chat.js',import.meta.url),'utf8');
-  assert.match(src,/const supportEmail = 'zebrablshopofficial@gmail\\.com'/);
-  assert.match(src,/const supportComposeLink = 'mailto:' \+ supportEmail/);
-  assert.match(src,/encodeURIComponent\(supportSubject\)/);
-  assert.match(src,/encodeURIComponent\(supportBody\)/);
-  assert.match(src,/emailLink\\.href = supportComposeLink/);
-  assert.match(src,/String\\.fromCharCode\(13, 10\)/);
+
+test('email support composes a prefilled message through the visitor mail app',()=>{
+  assert.ok(loader.includes("const supportEmail = 'zebrablshopofficial@gmail.com'"));
+  assert.ok(loader.includes("const supportComposeLink = 'mailto:' + supportEmail"));
+  assert.ok(loader.includes('encodeURIComponent(supportSubject)'));
+  assert.ok(loader.includes('encodeURIComponent(supportBody)'));
+  assert.ok(loader.includes('emailLink.href = supportComposeLink'));
+  assert.ok(loader.includes('String.fromCharCode(13, 10)'));
 });
-test('support center offers Gmail compose fallback as well as default mail app',()=>{
+test('support center offers Gmail compose as an alternative to default mail apps',()=>{
   const html=readFileSync(new URL('../public/support/index.html',import.meta.url),'utf8');
-  assert.match(html,/Email via your mail app/);
-  assert.match(html,/Compose in Gmail/);
-  assert.match(html,/mail\\.google\\.com\\/mail\\/\?view=cm/);
-  assert.match(html,/to=zebrablshopofficial%40gmail\\.com/);
+  assert.ok(html.includes('Email via your mail app'));
+  assert.ok(html.includes('Compose in Gmail'));
+  assert.ok(html.includes('mail.google.com/mail/?view=cm'));
+  assert.ok(html.includes('to=zebrablshopofficial%40gmail.com'));
 });
