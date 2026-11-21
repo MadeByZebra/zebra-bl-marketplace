@@ -12,7 +12,7 @@
     "dev": "node --watch server.js",
     "test": "node --test tests/*.test.js",
     "obfuscate": "node scripts/build-payloads.mjs",
-    "prestart": "node --check server.js && node --check public/app.js && node --check public/account/account.js && node --check email-delivery.js"
+    "prestart": "node --check server.js && node --check public/app.js && node --check public/account/account.js && node --check email-delivery.js && node --check public/tawk-chat.js"
   },
   "dependencies": {
     "express": "^4.21.2",
