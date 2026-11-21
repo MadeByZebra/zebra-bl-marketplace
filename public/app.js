@@ -151,7 +151,7 @@ function setupDesignInteractions(){
 }
 
 function wire(){
- $('#themeBtn').addEventListener('click',()=>{const theme=document.body.dataset.theme==='dark'?'light':'dark';document.body.dataset.theme=theme;try{localStorage.setItem('bl-theme',theme);localStorage.setItem('zebra-shop-theme',theme);}catch{}});
+ $('#themeBtn').addEventListener('click',()=>{const theme=document.body.dataset.theme==='dark'?'light':'dark';document.body.dataset.theme=theme;document.documentElement.dataset.theme=theme;try{localStorage.setItem('bl-theme',theme);localStorage.setItem('zebra-shop-theme',theme);}catch{}});
  $('#mobileMenuBtn').addEventListener('click',()=>{const open=$('#mobileNav').classList.toggle('show');$('#mobileMenuBtn').setAttribute('aria-expanded',String(open));$('#mobileMenuBtn').setAttribute('aria-label',open?'Close navigation':'Open navigation');});
  $$('#mobileNav a').forEach(a=>a.addEventListener('click',()=>{$('#mobileNav').classList.remove('show');$('#mobileMenuBtn').setAttribute('aria-expanded','false');}));
  $('#searchInput').addEventListener('input',e=>{state.query=e.target.value;renderProducts();});
@@ -179,7 +179,7 @@ function wire(){
  });
  $$('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close();}));
 }
-async function startup(){try{const saved=localStorage.getItem('zebra-shop-theme')||localStorage.getItem('bl-theme');if(saved==='light'||saved==='dark')document.body.dataset.theme=saved;}catch{}
+async function startup(){try{const saved=localStorage.getItem('zebra-shop-theme')||localStorage.getItem('bl-theme');if(saved==='light'||saved==='dark'){document.body.dataset.theme=saved;document.documentElement.dataset.theme=saved;}}catch{}
  $('#year').textContent=String(new Date().getFullYear());wire();setupDesignInteractions();
  try{const [store,me]=await Promise.all([api('/api/store'),api('/api/me')]);state={...state,...store,user:me.user};renderProducts();renderBundles();renderAccount();
   $('#paymentStatus').textContent=store.checkout_ready?(store.mode==='test'?'STRIPE TEST CHECKOUT READY':'STRIPE CHECKOUT READY'):'CHECKOUT SETUP PENDING';
