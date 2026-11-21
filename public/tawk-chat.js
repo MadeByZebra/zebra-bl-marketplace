@@ -47,7 +47,10 @@
     else updateOpened(false);
   };
   api.onChatMaximized = function () { updateOpened(true); };
-  api.onChatMinimized = function () { minimizeChat(); };
+  api.onChatMinimized = function () {
+    if (typeof api.hideWidget === 'function') api.hideWidget();
+    updateOpened(false);
+  };
   api.onChatHidden = function () { updateOpened(false); };
 
   function buildTrigger() {
