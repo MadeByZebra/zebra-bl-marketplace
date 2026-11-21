@@ -14,6 +14,7 @@ import { products, bundles, extraProducts, byId, includedIds, publicCatalog } fr
 import { discountQuote } from './discounts.js';
 import { validFreeCheckout } from './free-checkout.js';
 import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js';
+import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
@@ -87,7 +88,10 @@ const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'d
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
 const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
 const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
-const checkoutReady=()=>paymentReady()&&(testMode()||(process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'));
+const checkoutReady=()=>paymentReady()&&(
+ testMode()?process.env.ENABLE_TEST_CHECKOUT==='1'&&sandboxEmails().length>0:
+ process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'
+);
 const testCheckoutReady=()=>checkoutReady()&&testMode()&&process.env.ENABLE_TEST_CHECKOUT==='1';
 const quoteFor=(item,code)=>discountQuote(item,code,{freeCode:process.env.ZEBRA_FREE_PROMO_CODE||''});
 // The 100%-off code is private and limited to five completed Stripe coupon
@@ -121,6 +125,8 @@ function checkoutStatus(){
  if(!stripe||!testMode()&&process.env.ALLOW_LIVE_SALES!=='1')return 'Stripe sandbox payments are not connected. No charge was made.';
  if(stripeAuth==='unauthorized'||stripeAuth==='forbidden')return 'Stripe rejected the server payment key. No charge was made.';
  if(stripeAuth!=='authorized')return 'Stripe key verification has not completed. No charge was made.';
+ if(testMode()&&(!sandboxEmails().length||process.env.ENABLE_TEST_CHECKOUT!=='1'))
+  return 'Stripe sandbox is restricted until an approved tester email is configured. No charge was made.';
  if(!/^whsec_/.test(webSecret||''))return 'Stripe payment verification is not connected yet. No charge was made.';
  if(!usingPostgres)return 'The purchase database is not configured. No charge was made.';
  if(!mailReady())return 'Customer email delivery is not configured. No charge was made.';
@@ -178,7 +184,7 @@ async function sendPurchaseConfirmation(sessionId){
  const order=(await query(`SELECT p.session_id,p.sku,p.amount,u.email
  FROM purchases p JOIN users u ON u.id=p.user_id
  WHERE p.session_id=$1 AND p.status='paid'`,[sessionId]))[0];
- if(!order||order.sku==='checkout-test')return;
+ if(!order||order.sku==='checkout-test'||testMode()&&!isSandboxTester(order.email))return;
  const claim=await query(
   'INSERT INTO purchase_notifications(session_id,sent_at) VALUES ($1,$2) ON CONFLICT(session_id) DO NOTHING RETURNING session_id',
   [sessionId,now()]);
@@ -196,9 +202,9 @@ async function sendPurchaseConfirmation(sessionId){
    }
   }catch(_e){/* Stripe receipts remain accessible from purchase history. */}
   await sendShopEmail({
-    to:order.email,subject:'Your Zebra\'s Shop purchase is ready',
+    to:order.email,subject:testMode()?'[STRIPE SANDBOX] Zebra\'s Shop test order':'Your Zebra\'s Shop purchase is ready',
     text:receiptEmail({name:byId[order.sku]?.title,totalCents:order.amount,
-      orderId:sessionId,storeUrl:SITE.origin,receiptUrl:stripeReceipt}),
+      orderId:sessionId,storeUrl:SITE.origin,receiptUrl:stripeReceipt,testMode:testMode()}),
     idempotencyKey:'zebra-shop-order-'+sessionId
   });
  }catch(e){
@@ -295,6 +301,8 @@ app.post('/api/logout',requireUser,async(req,res)=>{
 });
 app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
  if(!checkoutReady())return res.status(503).json({error:checkoutStatus()||'Checkout is unavailable. No payment was taken.'});
+ if(testMode()&&!mayCheckoutSandbox({email:req.user.email,sku:String(req.body?.sku||'')}))
+  return res.status(403).json({error:'Stripe sandbox is restricted to approved testers. No real money was charged.'});
  if(req.body?.accepted_terms!==true)return res.status(400).json({error:'Please accept store terms before purchase.'});
  const sku=String(req.body?.sku||''),item=byId[sku];if(!item||!Number.isInteger(item.price)||item.price<50||item.unavailable&&sku!=='checkout-test'||sku==='checkout-test'&&!testCheckoutReady()||sku!=='checkout-test'&&includedIds(item).some(id=>{const entry=byId[id];return !entry?.file||!hasSealed(SCRIPT_DIR,entry.file);}))return res.status(400).json({error:'Product is not available for paid checkout yet.'});
  const quote=quoteFor(item,req.body?.discount_code);
@@ -376,6 +384,11 @@ app.get('/api/receipt/:sessionId',requireUser,async(req,res)=>{
 const licenseLimiter=rateLimit({windowMs:15*60*1000,limit:15,standardHeaders:'draft-7',legacyHeaders:false});
 const loaderLimiter=rateLimit({windowMs:60*1000,limit:50,standardHeaders:'draft-7',legacyHeaders:false});
 async function entitlementIsPaid(userId,sku){
+ // Test cards must never unlock real protected software for public visitors.
+ if(testMode()){
+  const owner=(await query('SELECT email FROM users WHERE id=$1',[userId]))[0];
+  if(!mayDeliverSandboxScript(owner?.email))return false;
+ }
  const orders=await query(`SELECT * FROM purchases WHERE user_id=$1 AND status='paid' ORDER BY paid_at DESC`,[userId]);
  for(const order of orders){
   if(!includedIds(byId[order.sku]||{id:order.sku}).includes(sku))continue;
@@ -433,7 +446,9 @@ app.get('/api/health',(_req,res)=>{
   email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
   stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:/^whsec_/.test(webSecret||''),
   postgres_ready:usingPostgres,vault_ready:vaultReady,
-  disabled_by_owner:process.env.DISABLE_CHECKOUT==='1'
+  disabled_by_owner:process.env.DISABLE_CHECKOUT==='1',
+  sandbox_testers_configured:sandboxEmails().length>0,
+  sandbox_script_delivery_enabled:testMode()&&process.env.ENABLE_TEST_SOFTWARE_DELIVERY==='1'
  });
 });
 app.use(express.static(path.join(ROOT,'public'),{index:'index.html',dotfiles:'deny',setHeaders:r=>r.setHeader('Cache-Control','public,max-age=300')}));
