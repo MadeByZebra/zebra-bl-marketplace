@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
 import { discountQuote } from './discounts.js';
 import { validFreeCheckout } from './free-checkout.js';
+import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js';
 import { buyerLoadstring } from './github-loader.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
@@ -121,7 +122,8 @@ async function fetchUser(req){
 async function requireUser(req,res,next){try{req.user=await fetchUser(req);if(!req.user)return res.status(401).json({error:'Sign in to continue.'});next();}catch(e){safeError(res,e);}}
 function validateOrigin(req,res,next){const origin=req.get('origin');if(origin&&origin!==SITE.origin)return res.status(403).json({error:'Invalid request origin.'});next();}
 async function grantFromStripe(session){
- if(!session||!['paid','no_payment_required'].includes(session.payment_status)||session.currency!=='usd')return false;
+ const configuredMode=testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unknown';
+ if(!checkoutModeMatches(session,configuredMode)||!['paid','no_payment_required'].includes(session.payment_status)||session.currency!=='usd')return false;
  const order=(await query('SELECT * FROM purchases WHERE session_id=$1',[session.id]))[0];
  if(!order||!byId[order.sku]||order.status==='revoked')return false;
  if(session.client_reference_id!==order.user_id||session.metadata?.user_id!==order.user_id||session.metadata?.sku!==order.sku)return false;
@@ -134,7 +136,7 @@ async function grantFromStripe(session){
   // server-issued 100%-off coupon and a matching one-account reservation.
   const claimed=(await query('SELECT * FROM free_promo_redemptions WHERE user_id=$1 AND session_id=$2 AND sku=$3',
     [order.user_id,session.id,order.sku]))[0];
-  if(!validFreeCheckout(session,order,claimed))return false;
+  if(!validFreeCheckout(session,order,claimed,configuredMode))return false;
   await query(`UPDATE purchases SET status='paid',paid_at=COALESCE(paid_at,$1)
     WHERE session_id=$2 AND status!='revoked'`,[now(),session.id]);
   await query('UPDATE free_promo_redemptions SET redeemed_at=$1 WHERE user_id=$2 AND session_id=$3 AND redeemed_at IS NULL',
@@ -145,9 +147,8 @@ async function grantFromStripe(session){
  // Verify the charge has not already been refunded or disputed before granting access.
  if(!session.payment_intent)return false;
  const intent=await stripe.paymentIntents.retrieve(typeof session.payment_intent==='object'?session.payment_intent.id:session.payment_intent,{expand:['latest_charge']});
- if(intent.status!=='succeeded'||intent.amount_received!==order.amount||intent.currency!=='usd')return false;
  const charge=intent.latest_charge;
- if(!charge||typeof charge==='string'||charge.refunded||Number(charge.amount_refunded)>0||charge.disputed)return false;
+ if(!charge||typeof charge==='string'||!paymentIntentMatches(session,order,intent,charge,configuredMode))return false;
  await query(`UPDATE purchases SET status='paid',payment_intent=$1,
   paid_at=COALESCE(paid_at,$2) WHERE session_id=$3 AND status!='revoked'`,[intent.id,now(),session.id]);
  return true;
@@ -195,6 +196,8 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
  if(!stripe||!webSecret)return res.sendStatus(503);
  let evt;try{evt=stripe.webhooks.constructEvent(req.body,req.get('stripe-signature'),webSecret);}catch(e){return res.status(400).send('Invalid Stripe signature');}
  try{
+  // A mismatched webhook environment cannot grant access or revoke orders.
+  if(evt.livemode!==!testMode())return res.sendStatus(400);
   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(evt.type)){
     const session=evt.data.object;
     if(['paid','no_payment_required'].includes(session.payment_status)&&await grantFromStripe(await stripe.checkout.sessions.retrieve(session.id))){
