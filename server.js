@@ -25,6 +25,20 @@ const LIVE=process.env.NODE_ENV==='production';
 const SCRIPT_DIR=path.resolve(ROOT,process.env.SCRIPT_STORAGE_DIR||'sealed-payloads');
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 const webSecret=process.env.STRIPE_WEBHOOK_SECRET;
+let stripeAuth='not_checked'; // Only status, never keys or account identifiers.
+async function checkStripeOnStartup(){
+ if(!stripe){stripeAuth='not_configured';return;}
+ try{
+  await stripe.accounts.retrieve();
+  stripeAuth='authorized';
+ }catch(e){
+  stripeAuth=e?.statusCode===401?'unauthorized':
+    e?.statusCode===403?'forbidden':'temporarily_unavailable';
+ }
+ console.log('Stripe key diagnostic:',stripeAuth,'mode:',
+   process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')?'sandbox':
+   process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'invalid');
+}
 const usingPostgres=!!process.env.DATABASE_URL;
 let pool,sqlite;
 if(usingPostgres){pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_SSL==='require'?{rejectUnauthorized:true}:undefined});}
@@ -72,7 +86,7 @@ const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft
 const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
 const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
-const paymentReady=()=>!!(stripe&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
+const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(testMode()||(process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'));
 const testCheckoutReady=()=>checkoutReady()&&testMode()&&process.env.ENABLE_TEST_CHECKOUT==='1';
 const quoteFor=(item,code)=>discountQuote(item,code,{freeCode:process.env.ZEBRA_FREE_PROMO_CODE||''});
@@ -104,7 +118,9 @@ async function reserveFreePromo(userId,sku){
 }
 function checkoutStatus(){
  if(process.env.DISABLE_CHECKOUT==='1')return 'Payments are paused until the Stripe sandbox and customer email delivery are verified. No charge was made.';
- if(!stripe||!testMode()&&process.env.ALLOW_LIVE_SALES!=='1')return 'Stripe test payments are not connected. No charge was made.';
+ if(!stripe||!testMode()&&process.env.ALLOW_LIVE_SALES!=='1')return 'Stripe sandbox payments are not connected. No charge was made.';
+ if(stripeAuth==='unauthorized'||stripeAuth==='forbidden')return 'Stripe rejected the server payment key. No charge was made.';
+ if(stripeAuth!=='authorized')return 'Stripe key verification has not completed. No charge was made.';
  if(!/^whsec_/.test(webSecret||''))return 'Stripe payment verification is not connected yet. No charge was made.';
  if(!usingPostgres)return 'The purchase database is not configured. No charge was made.';
  if(!mailReady())return 'Customer email delivery is not configured. No charge was made.';
@@ -113,7 +129,7 @@ function checkoutStatus(){
  if(!checkoutReady())return 'Payments are not available yet. No charge was made.';
  return null;
 }
-function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,checkout_message:checkoutStatus(),support_email:process.env.SUPPORT_EMAIL||null,catalog};}
+function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',stripe_key_status:stripeAuth,email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,checkout_message:checkoutStatus(),support_email:process.env.SUPPORT_EMAIL||null,catalog};}
 function safeError(res,err,code=500){console.error(err);return res.status(code).json({error:'Request could not be completed.'});}
 async function fetchUser(req){
  const token=parseCookie(req.headers.cookie,'bl_session');if(!token||!/^[a-f0-9]{64}$/.test(token))return null;
@@ -415,12 +431,18 @@ app.get('/api/health',(_req,res)=>{
   ok:true,service:'zebra-store',checkout:checkoutReady()?'configured':'disabled',
   mode:testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unconfigured',
   email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
-  stripe_api_ready:!!stripe,webhook_configured:!!webSecret,
+  stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:/^whsec_/.test(webSecret||''),
   postgres_ready:usingPostgres,vault_ready:vaultReady,
   disabled_by_owner:process.env.DISABLE_CHECKOUT==='1'
  });
 });
 app.use(express.static(path.join(ROOT,'public'),{index:'index.html',dotfiles:'deny',setHeaders:r=>r.setHeader('Cache-Control','public,max-age=300')}));
 app.get('*',(_req,res)=>res.sendFile(path.join(ROOT,'public','index.html')));
-init().then(()=>{app.listen(PORT,'0.0.0.0',()=>console.log(`BL Scripts Marketplace at ${SITE.origin}; checkout ${checkoutReady()?'READY':'LOCKED'}`));checkProviderOnStartup().catch(()=>console.warn('Email provider diagnostic unavailable'));}).catch(e=>{console.error('Database initialization failed',e);process.exit(1);});
+init().then(async()=>{
+ await Promise.all([
+  checkProviderOnStartup().catch(()=>console.warn('Email provider diagnostic unavailable')),
+  checkStripeOnStartup().catch(()=>console.warn('Stripe key diagnostic unavailable'))
+ ]);
+ app.listen(PORT,'0.0.0.0',()=>console.log(`BL Scripts Marketplace at ${SITE.origin}; checkout ${checkoutReady()?'READY':'LOCKED'}`));
+}).catch(e=>{console.error('Database initialization failed',e);process.exit(1);});
 export {app,checkoutReady,grantFromStripe};
