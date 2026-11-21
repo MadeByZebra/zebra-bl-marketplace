@@ -1,0 +1,32 @@
+{
+  "control-center.lua": {
+    "sha256": "6f97e5bfebeb1097ba764457cef7c5d432021c7746d931b54bc1ef494095aa2c",
+    "bytes": 590273,
+    "ciphertext_bytes": 594085
+  },
+  "str-grinder.lua": {
+    "sha256": "5d0d470d09d3579d843db40ba0e83a00093f190d08573d1480ef8a2dd533428b",
+    "bytes": 21694,
+    "ciphertext_bytes": 21381
+  },
+  "end-grinder.lua": {
+    "sha256": "076b81cd2fec60422ef601ca824749cf085d936b280d37c5cf47f0b2bec1ff86",
+    "bytes": 35152,
+    "ciphertext_bytes": 34977
+  },
+  "dex-desktop.lua": {
+    "sha256": "0c8c8247bcdc5de3adf02005d9ce0bb2e1e99ac9ae9549c5b1a164ca2184b51c",
+    "bytes": 47738,
+    "ciphertext_bytes": 47629
+  },
+  "dex-mobile.lua": {
+    "sha256": "1dfaeb06661ad285ad846e12ac4613d77ef2e358986a5e811a49430e4c845eb9",
+    "bytes": 34900,
+    "ciphertext_bytes": 34709
+  },
+  "fps-optimizer.lua": {
+    "sha256": "a6820d53cf41ea3ef98132ecf27f05b4c61647832052a650601d03f8653aacd0",
+    "bytes": 8149,
+    "ciphertext_bytes": 7629
+  }
+}
