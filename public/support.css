@@ -1,0 +1,57 @@
+/* Zebra's Shop customer help center — true-black studio. */
+.zebra-help{min-height:100vh;background:#000;color:#f5f5f5;font-family:Geist,Inter,system-ui,Arial,sans-serif;font-size:15px;line-height:1.6}
+.zebra-help *{box-sizing:border-box}
+.zebra-help a{color:inherit}
+.help-wrap{width:min(1120px,calc(100% - 44px));margin:0 auto}
+.help-nav{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:26px 0;border-bottom:1px solid #292929}
+.help-brand{font-size:13px;letter-spacing:.14em;text-decoration:none;font-weight:800}
+.help-nav-links{display:flex;gap:9px;flex-wrap:wrap}
+.help-nav-links a{padding:10px 14px;border:1px solid #252525;border-radius:9px;text-decoration:none;color:#bbb;font-size:13px;transition:.2s}
+.help-nav-links a:hover,.help-nav-links a[aria-current=page]{background:#181818;color:#fff;border-color:#4b4b4b}
+.help-kicker{letter-spacing:.18em;text-transform:uppercase;font-size:11px;color:#a9a9a9;font-weight:650}
+.help-hero{padding:88px 0 61px;border-bottom:1px solid #222}
+.help-hero h1{font-size:clamp(46px,8vw,99px);letter-spacing:-.085em;line-height:.99;font-weight:650;max-width:880px;margin:20px 0 20px}
+.help-hero h1 span{color:#888}
+.help-hero>p{color:#aaa;max-width:620px;font-size:17px;line-height:1.65}
+.help-actions{display:flex;gap:12px;flex-wrap:wrap;margin:27px 0 0}
+.help-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;text-decoration:none!important;padding:12px 17px;border:1px solid #444;border-radius:10px;background:#0d0d0d;color:#f8f8f8!important;font-weight:600;font-size:13px;cursor:pointer;transition:background .2s}
+.help-btn:hover{background:#252525}
+.help-btn.primary{background:#f1f1f1;color:#0a0a0a!important;border-color:#f1f1f1}
+.help-btn.primary:hover{background:#cfcfcf}
+.help-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:27px 0 55px}
+.help-tile{padding:24px;border:1px solid #282828;border-radius:15px;background:#090909}
+.help-tile h3{font-size:17px;font-weight:650;margin:13px 0 8px}
+.help-tile p{color:#aaa;font-size:13px;line-height:1.65;margin:0}
+.help-tile a{display:inline-block;margin-top:14px;color:#eee;text-decoration:underline;text-underline-offset:4px;font-size:13px}
+.help-tile .help-number{color:#888;font-family:monospace;font-size:12px}
+.help-section{padding:54px 0;border-top:1px solid #222}
+.help-section h2{font-size:clamp(25px,4vw,39px);letter-spacing:-.055em;margin:10px 0 12px}
+.help-section>p{color:#aaa;max-width:730px}
+.help-search{display:block;width:100%;border:1px solid #383838;border-radius:11px;background:#101010;color:#fff;padding:15px 18px;margin:27px 0 16px;font:inherit}
+.help-search:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.help-faq{display:grid;gap:10px}
+.help-faq details{background:#0b0b0b;border:1px solid #2a2a2a;border-radius:12px;padding:0 20px}
+.help-faq summary{display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;padding:20px 0;font-weight:590;list-style:none}
+.help-faq summary::-webkit-details-marker{display:none}
+.help-faq summary::after{content:'+';color:#aaa;font-size:22px;font-weight:300}
+.help-faq details[open] summary::after{content:'−'}
+.help-faq .answer{padding:0 0 21px;color:#adadad;font-size:14px;line-height:1.75}
+.help-faq .answer a{color:#f0f0f0;text-underline-offset:4px}
+.help-faq .answer strong{color:#f8f8f8}
+.help-callout{padding:30px;background:#101010;border:1px solid #363636;border-radius:17px;margin:20px 0}
+.help-callout h3{font-size:23px;letter-spacing:-.04em;margin:0 0 8px}
+.help-callout p{color:#aaa;margin:0 0 17px}
+.help-note{font-size:12px;color:#888}
+.help-legal{max-width:850px;padding:75px 0 100px}
+.help-legal h1{font-size:clamp(44px,7vw,75px);letter-spacing:-.07em;line-height:1.04;margin:18px 0 24px}
+.help-legal h2{font-size:22px;letter-spacing:-.03em;margin-top:37px}
+.help-legal p,.help-legal li{color:#b2b2b2;line-height:1.8}
+.help-legal ul{padding-left:24px}
+.help-legal a{color:#fff}
+.help-footer{border-top:1px solid #2d2d2d;padding:28px 0 100px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;color:#999;font-size:12px}
+.help-footer nav{display:flex;gap:17px;flex-wrap:wrap}
+.help-footer a{color:#ccc;text-decoration:none}
+.help-footer a:hover{text-decoration:underline}
+.help-empty{color:#aaa;display:none;padding:12px}
+@media(max-width:800px){.help-grid{grid-template-columns:1fr}.help-hero{padding-top:55px}.help-legal{padding-top:40px}}
+@media(max-width:520px){.help-wrap{width:min(100% - 28px,1120px)}.help-nav{padding:19px 0}.help-nav-links a{padding:8px 10px}.help-tile{padding:20px}.help-faq details{padding:0 14px}}
