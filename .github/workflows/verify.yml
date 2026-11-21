@@ -17,10 +17,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit
       - name: Run unit and security regression tests
         run: npm test
       - name: Source must not contain runtime secrets
