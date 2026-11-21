@@ -23,6 +23,25 @@
   const supportComposeLink = 'mailto:' + supportEmail
     + '?subject=' + encodeURIComponent(supportSubject)
     + '&body=' + encodeURIComponent(supportBody);
+  // All customer-facing support email links use one consistent draft.
+  // This covers the footer, help articles, legal pages and any link inserted
+  // later by the storefront's product/policy dialogs.
+  const supportEmailSelector = 'a[href^="mailto:zebrablshopofficial@gmail.com" i], a[data-zebra-email-support]';
+  function updateEmailSupportLinks(root) {
+    if (!root?.querySelectorAll) return;
+    root.querySelectorAll(supportEmailSelector).forEach(function (link) {
+      link.href = supportComposeLink;
+      if (!link.getAttribute('aria-label')) {
+        link.setAttribute('aria-label', 'Compose email to Zebra Support');
+      }
+    });
+  }
+  document.addEventListener('click', function (event) {
+    const element = event.target instanceof Element ? event.target : null;
+    const link = element?.closest(supportEmailSelector);
+    if (link) link.href = supportComposeLink;
+  }, true);
+
   let loaded = false;
   let requested = false;
   let opening = false;
@@ -118,6 +137,7 @@
     emailLink.title = 'Open a ready-to-send email in your default mail app';
     emailLink.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg><span>EMAIL SUPPORT</span>';
     document.body.appendChild(emailLink);
+    updateEmailSupportLinks(document);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildTrigger);
