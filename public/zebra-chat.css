@@ -71,3 +71,40 @@
 }
 .zebra-footer-help a { text-decoration: underline; text-underline-offset: 3px; color: #e0e0e0; }
 .zebra-footer-help a:hover { color: #fff; }
+
+
+/* When the official chat is maximized, only the chat's own scrollbar moves.
+   Do not access or modify tawk.to's cross-origin iframe content or branding. */
+html.zebra-chat-scroll-locked,
+html.zebra-chat-scroll-locked body {
+  overflow-y: hidden !important;
+  overscroll-behavior-y: none !important;
+}
+html.zebra-chat-scroll-locked .zebra-support-email { visibility:hidden; pointer-events:none; }
+/* Direct email support alongside live chat: no intermediary, no extra charge. */
+.zebra-support-email {
+  position:fixed;
+  right:calc(max(18px, env(safe-area-inset-right)) + 231px);
+  bottom:max(27px, env(safe-area-inset-bottom));
+  z-index:2147481999;
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-height:50px;padding:0 14px;
+  color:#eee!important;background:#0b0b0b!important;
+  border:1px solid #393939;border-radius:13px;
+  font:650 10px/1.1 Geist,Inter,system-ui,sans-serif;
+  letter-spacing:.11em;text-decoration:none!important;
+  box-shadow:0 10px 35px rgba(0,0,0,.45);
+  transition:border-color .2s ease,background .2s ease;
+}
+.zebra-support-email:hover { background:#171717!important;border-color:#aaa;color:#fff!important; }
+.zebra-support-email:focus-visible { outline:2px solid #fff;outline-offset:3px; }
+@media(max-width:640px){
+  .zebra-support-email{
+    right:83px;
+    bottom:max(16px, env(safe-area-inset-bottom));
+    min-height:54px;padding:0 11px;border-radius:16px;
+  }
+  .zebra-support-email span { display:none; }
+  .zebra-support-email svg{width:21px;height:21px}
+}
+@media(prefers-reduced-motion:reduce){.zebra-support-email{transition:none}}
