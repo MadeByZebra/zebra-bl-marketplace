@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
 import { discountQuote } from './discounts.js';
 import { validFreeCheckout } from './free-checkout.js';
+import { buyerLoadstring } from './github-loader.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
 
@@ -374,8 +375,7 @@ app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
   const key='ZBL_'+randomBytes(28).toString('hex');
   await query('UPDATE licenses SET revoked_at=$1 WHERE user_id=$2 AND sku=$3 AND revoked_at IS NULL',[now(),req.user.id,sku]);
   await query('INSERT INTO licenses (id,user_id,sku,token_hash,created_at) VALUES ($1,$2,$3,$4,$5)',[randomUUID(),req.user.id,sku,sha(key),now()]);
-  const url=new URL(`/api/loader/${encodeURIComponent(sku)}`,SITE.origin);url.searchParams.set('key',key);
-  res.json({loadstring:`loadstring(game:HttpGet(${JSON.stringify(url.toString())}))()`,note:'Personal license URL. Keep it private; rotating revokes earlier keys.'});
+  res.json({loadstring:buyerLoadstring(sku,key),note:'The raw GitHub link is a public, license-only bootstrap. Your full script is delivered privately by Zebra’s Shop after verified ownership. This personal command contains your key; rotating it revokes the previous one.'});
  }catch(e){safeError(res,e);}
 });
 // Runtime licenses do not use browser cookies. Every delivery verifies the paid account.
