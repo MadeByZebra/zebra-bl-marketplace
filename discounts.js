@@ -17,7 +17,7 @@ export function discountQuote(item,provided='',options={}){
   // environment variable and is never shipped in website JavaScript.
   const configured=String(options.freeCode||'').trim().toUpperCase();
   const eligible=item.kind!=='download'&&!item.testOnly&&
-    (Array.isArray(item.items)||/\\.lua$/.test(String(item.file||'')));
+    (Array.isArray(item.items)||/\.lua$/.test(String(item.file||'')));
   if(configured&&/^[A-Z0-9-]{6,32}$/.test(configured)&&raw===configured){
     if(!eligible)return {ok:false,error:'This free promotion is not eligible for that product.'};
     return {ok:true,code:raw,percent:100,original:item.price,total:0,saved:item.price,free:true,
