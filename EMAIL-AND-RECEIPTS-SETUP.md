@@ -31,3 +31,7 @@ After a server-verified payment, Zebra's Shop:
 Emails are sent only to verified purchasers. Test-mode Stripe payments may not send genuine receipt emails. Do not activate live sales until a complete test passes, policy compliance is reviewed, and durable PostgreSQL hosting is configured.
 
 **Status:** Code deployment alone does not activate Brevo, verify delivery, turn on Stripe Dashboard receipts, or authorize live payments.
+
+## Complimentary $0 Stripe Checkout
+
+Configure the **private Render** `ZEBRA_FREE_PROMO_CODE` value to `ZEBRAFREE` if you want a limited complimentary promotion. It is one order per verified email account, capped at five completed redemptions in the Stripe coupon. Eligible: available Lua scripts and bundles; not an unavailable ZFLAG installer or test diagnostic. The code has no effect unless Stripe Checkout test mode is configured, the webhook signing secret is set and checkout is explicitly enabled. After Stripe verifies a completed zero-total Checkout Session, the license may be issued and the order appears as a free promotional order. Stripe does not charge a card or issue a card-payment receipt for a $0 order. Do not treat a quote as evidence of purchase.
