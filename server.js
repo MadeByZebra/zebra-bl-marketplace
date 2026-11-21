@@ -49,7 +49,7 @@ let providerAuth='not_checked'; // No secret or account data is retained.
 async function checkProviderOnStartup(){
  const info=await verifyEmailProvider();
  providerAuth=info.auth;
- console.log('Email provider diagnostic:',info.provider,info.auth);
+ console.log('Email provider diagnostic:',info.provider,info.auth,info.detail||'none');
 }
 const emailAuthLimiter=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false});
 const now=()=>Date.now();
