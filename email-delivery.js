@@ -19,8 +19,20 @@ export async function verifyEmailProvider(env=process.env,fetchImpl=fetch){
    signal:AbortSignal.timeout(9000)
   });
   if(response.ok)return {provider,auth:'authorized'};
-  if(response.status===401)return {provider,auth:'unauthorized'};
-  if(response.status===403)return {provider,auth:'forbidden'};
+  if(response.status===401||response.status===403){
+   // Never log raw API error payloads; only report a controlled classification.
+   let message='';
+   try{
+    const data=await response.json();
+    message=String(data?.message||data?.code||'').slice(0,250).toLowerCase();
+   }catch(_e){}
+   const detail=/key not found|invalid api key|unknown api key|invalid key/.test(message)?'invalid_key':
+     /ip.{0,40}(not allowed|unauthor|blocked|forbidden)|unauthor.{0,40}ip|ip address/.test(message)?'ip_restricted':
+     /permission|access denied|scope/.test(message)?'permission_denied':
+     /not activated|not enabled|account_under_validation|account under validation/.test(message)?'account_not_approved':
+     'unclassified';
+   return {provider,auth:response.status===401?'unauthorized':'forbidden',detail};
+  }
   if(response.status===429)return {provider,auth:'rate_limited'};
   return {provider,auth:'http_'+String(response.status)};
  }catch(_e){return {provider,auth:'network_error'};}
