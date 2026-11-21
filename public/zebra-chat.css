@@ -53,3 +53,21 @@
   .zebra-support-trigger { transition:none; }
   .zebra-support-trigger:hover { transform:none; }
 }
+
+/* Trustworthy support and policy links on every shop page. */
+.zebra-footer-help {
+  width: min(1120px, calc(100% - 32px));
+  margin: 18px auto 0;
+  padding: 25px 2px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 25px;
+  flex-wrap: wrap;
+  border-top: 1px solid #2b2b2b;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #a6a6a6;
+}
+.zebra-footer-help a { text-decoration: underline; text-underline-offset: 3px; color: #e0e0e0; }
+.zebra-footer-help a:hover { color: #fff; }
