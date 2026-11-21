@@ -14,8 +14,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --silent --show-error --fail --max-time 40 https://zebra-bl-marketplace.onrender.com/support/ | grep -q 'id="zebra-support-form"'
-          curl --silent --show-error --fail --max-time 40 https://zebra-bl-marketplace.onrender.com/support-form.js | grep -q '/api/support/request'
+          curl --silent --show-error --fail --max-time 40 --output /tmp/zebra-support.html https://zebra-bl-marketplace.onrender.com/support/
+          grep -q 'id="zebra-support-form"' /tmp/zebra-support.html
+          curl --silent --show-error --fail --max-time 40 --output /tmp/zebra-support-form.js https://zebra-bl-marketplace.onrender.com/support-form.js
+          grep -q '/api/support/request' /tmp/zebra-support-form.js
       - name: Send one non-customer live support test to shop inbox
         shell: bash
         run: |
