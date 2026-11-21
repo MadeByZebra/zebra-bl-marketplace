@@ -54,7 +54,7 @@ $('verifyForm').addEventListener('submit',async e=>{e.preventDefault();const but
 $('changeEmail').addEventListener('click',showLogin);
 $('signOut').addEventListener('click',async()=>{try{await api('/api/logout',{method:'POST',body:'{}'});showLogin();status('Signed out.')}catch(e){status(e.message,true)}});
 async function startup(){
- try{const [me,store]=await Promise.all([api('/api/me'),api('/api/store')]);if(me.user)await showAccount(me.user);else if(!store.email_login_ready)status('Email sign-in is not configured yet. No sign-in email can be sent.',true);
+ try{const [me,store]=await Promise.all([api('/api/me'),api('/api/store')]);if(me.user)await showAccount(me.user);else if(!store.email_login_ready)status('Email sign-in is not configured yet. No sign-in email can be sent.',true);else if(store.email_sender_mode==='resend_test_only')status('Testing mode: sign-in codes currently reach only the email registered with Resend. Public sign-in is being configured.');
  const url=new URL(location.href);if(url.searchParams.get('checkout')==='success'&&url.searchParams.get('session_id')){
   pendingCheckoutId=url.searchParams.get('session_id');
   if(me.user)await verifyCheckout(me.user);
