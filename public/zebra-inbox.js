@@ -7,6 +7,23 @@ const $=id=>document.getElementById(id),ui={
  alerts:$('enableAlerts')
 };
 let threads=[],selected=null,busy=false,lastWaiting=new Set(),hadFirstLoad=false;
+let soundEnabled=false,soundContext=null;
+function chime(){
+ if(!soundEnabled||!soundContext)return;
+ try{
+  const start=soundContext.currentTime;
+  for(const [offset,frequency] of [[0,790],[0.2,620],[0.4,790]]){
+   const osc=soundContext.createOscillator(),gain=soundContext.createGain();
+   osc.type='sine';osc.frequency.value=frequency;
+   gain.gain.setValueAtTime(0.0001,start+offset);
+   gain.gain.exponentialRampToValueAtTime(0.075,start+offset+0.025);
+   gain.gain.exponentialRampToValueAtTime(0.0001,start+offset+0.16);
+   osc.connect(gain);gain.connect(soundContext.destination);
+   osc.start(start+offset);osc.stop(start+offset+0.18);
+  }
+ }catch(_error){/* Audio permission or hardware is optional. */}
+}
+
 function feedback(text,isError=false){ui.feedback.textContent=text||'';ui.feedback.classList.toggle('error',isError);}
 async function api(url,options={}){
  const headers={Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{})};
@@ -24,6 +41,7 @@ function notifyNew(rows){
   if(additions.length&&'Notification' in window&&Notification.permission==='granted'){
    new Notification("Zebra Support — customer requests a human",{body:additions.length+' conversation(s) waiting for you',tag:'zebra-support-handoff'});
   }
+  if(additions.length)chime();
   if(additions.length)feedback('A customer is requesting human assistance.');
  }
  hadFirstLoad=true;lastWaiting=ids;
@@ -86,24 +104,29 @@ async function refresh(){
  }
 }
 async function change(action,body){
- if(!selected||busy)return;busy=true;feedback('');
+ if(!selected||busy)return false;busy=true;feedback('');
  try{
   await api('/api/zebra-chat/admin/threads/'+encodeURIComponent(selected)+'/'+action,{method:'POST',body:JSON.stringify(body||{})});
   await refresh();
- }catch(e){feedback(e.message,true);}
+  return true;
+ }catch(e){feedback(e.message,true);return false;}
  finally{busy=false;}
 }
 ui.join.addEventListener('click',()=>change('join'));
 ui.close.addEventListener('click',()=>{if(confirm('Close this conversation for the visitor?'))change('close')});
 ui.form.addEventListener('submit',async(e)=>{
  e.preventDefault();const value=ui.reply.value.trim();if(!value||busy)return;
- await change('reply',{message:value});if(!busy)ui.reply.value='';
+ const sent=await change('reply',{message:value});if(sent)ui.reply.value='';
 });
 ui.reply.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ui.form.requestSubmit();}});
 ui.alerts.addEventListener('click',async()=>{
  if(!('Notification' in window)){feedback('Desktop notifications are not available in this browser.',true);return;}
  const result=await Notification.requestPermission();
- feedback(result==='granted'?'Desktop notifications enabled. Keep this inbox tab open to receive alerts.':'Allow notifications in your browser settings to receive alerts.',result!=='granted');
+ if(result==='granted'){
+  const AudioCtor=window.AudioContext||window.webkitAudioContext;
+  if(AudioCtor){soundContext=new AudioCtor();await soundContext.resume().catch(()=>{});soundEnabled=true;}
+ }
+ feedback(result==='granted'?'Alerts enabled. Keep this inbox tab open for notifications and sound.':'Allow notifications in browser settings to receive alerts.',result!=='granted');
 });
 refresh();
 setInterval(()=>{if(!busy)refresh();},5000);
