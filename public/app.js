@@ -34,8 +34,23 @@ function viewProduct(id){const p=findItem(id);if(!p)return;
  const featureList=(p.features||[]).map(f=>`<div class="feature-row">${escapeHtml(f)}</div>`).join('');
  const owns=state.owned.includes(id);
  const buyLabel=p.unavailable?'NOT FOR SALE':owns?'ALREADY IN YOUR LIBRARY':'PURCHASE SECURELY ↗';
- $('#productDialogBody').innerHTML=`<div class="dialog-product-top"><span>ZEBRA / BL SCRIPTS / ${escapeHtml(p.category.toUpperCase())}</span><span>${escapeHtml(p.label)} · ${escapeHtml(p.platform)}</span></div><h2 class="dialog-product-title">${escapeHtml(p.title)}</h2><p class="dialog-product-desc">${escapeHtml(p.description)}</p><div class="dialog-detail-grid"><div><h4>FEATURES / WHAT'S INCLUDED</h4>${featureList}</div><div><h4>HOW THE TOOL WORKS</h4><p class="dialog-product-desc">${escapeHtml(p.details)}</p><h4>DELIVERY & COMPATIBILITY</h4><p class="dialog-product-desc">${p.kind==='download'?'The updated ZFLAG installer is downloaded from a server-verified account library after payment.':p.kind==='test'?'This is a Stripe test-mode verification purchase with no files included.':'After verified payment, generate a personalized, license-keyed loadstring. Raw source is not sold; game compatibility is not guaranteed.'}</p></div></div><div class="detail-video">${videoMarkup(p)}</div><div class="dialog-buy"><div><strong>${p.unavailable?'ON HOLD':money(p.price)}</strong><div class="micro-label" style="margin-top:5px">${p.unavailable?'SOURCE REVIEW REQUIRED':'ONE-TIME PURCHASE / USD'}</div></div><div><label><input id="agreeTerms" type="checkbox"/> I agree to the <a href="#" data-policy-inline="terms"><u>terms, compatibility and refund policy</u></a>.</label><button style="margin-top:12px" class="primary-button" id="purchaseNow" ${p.unavailable?'disabled':''}>${buyLabel}</button></div></div>`;
+ $('#productDialogBody').innerHTML=`<div class="dialog-product-top"><span>ZEBRA / BL SCRIPTS / ${escapeHtml(p.category.toUpperCase())}</span><span>${escapeHtml(p.label)} · ${escapeHtml(p.platform)}</span></div><h2 class="dialog-product-title">${escapeHtml(p.title)}</h2><p class="dialog-product-desc">${escapeHtml(p.description)}</p><div class="dialog-detail-grid"><div><h4>FEATURES / WHAT'S INCLUDED</h4>${featureList}</div><div><h4>HOW THE TOOL WORKS</h4><p class="dialog-product-desc">${escapeHtml(p.details)}</p><h4>DELIVERY & COMPATIBILITY</h4><p class="dialog-product-desc">${p.kind==='download'?'The updated ZFLAG installer is downloaded from a server-verified account library after payment.':p.kind==='test'?'This is a Stripe test-mode verification purchase with no files included.':'After verified payment, generate a personalized, license-keyed loadstring. Raw source is not sold; game compatibility is not guaranteed.'}</p></div></div><div class="detail-video">${videoMarkup(p)}</div><div class="dialog-buy"><div><strong>${p.unavailable?'ON HOLD':money(p.price)}</strong><div class="micro-label" style="margin-top:5px">${p.unavailable?'SOURCE REVIEW REQUIRED':'ONE-TIME PURCHASE / USD'}</div></div><div>
+ <label class="discount-label" for="discountCode">DISCOUNT CODE (OPTIONAL)</label>
+ <div class="discount-row"><input id="discountCode" type="text" maxlength="32" placeholder="Enter promo code" autocomplete="off" spellcheck="false"/><button type="button" class="outline-button" id="applyDiscount">Apply</button></div>
+ <p class="discount-feedback" id="discountFeedback" aria-live="polite">Discounts are applied before Stripe Checkout.</p>
+ <label><input id="agreeTerms" type="checkbox"/> I agree to the <a href="#" data-policy-inline="terms"><u>terms, compatibility and refund policy</u></a>.</label>
+ <button style="margin-top:12px" class="primary-button" id="purchaseNow" ${p.unavailable?'disabled':''}>${buyLabel}</button></div></div>`;
  openDialog($('#productDialog'));
+ const promoField=$('#discountCode'),promoFeedback=$('#discountFeedback');
+ if(state.pendingDiscount){promoField.value=state.pendingDiscount;state.pendingDiscount='';}
+ promoField?.addEventListener('input',()=>{promoFeedback.textContent='Apply to preview your discounted total.';});
+ $('#applyDiscount')?.addEventListener('click',async()=>{
+  const button=$('#applyDiscount');button.disabled=true;
+  try{
+   const q=await api('/api/discount/quote?sku='+encodeURIComponent(p.id)+'&code='+encodeURIComponent(promoField.value.trim()));
+   promoFeedback.textContent=q.saved>0?q.code+' applied — '+money(q.total)+' (you save '+money(q.saved)+').':'Regular price: '+money(q.total);
+  }catch(e){promoFeedback.textContent=e.message;}finally{button.disabled=false;}
+ });
  $('#purchaseNow')?.addEventListener('click',()=>{
   if(owns&&!p.items){closeDialogs();openLibrary();return;}
   if(!$('#agreeTerms').checked){toast('Please review and accept the store terms first.');return;}
@@ -43,11 +58,16 @@ function viewProduct(id){const p=findItem(id);if(!p)return;
  });
 }
 async function purchase(id){const p=findItem(id);if(!p||p.unavailable)return;
+ const discountCode=String($('#discountCode')?.value||'').trim().toUpperCase();
  if(!state.checkout_ready){toast('Checkout is not configured. No payment was taken.');return;}
- if(!state.user){state.pendingProduct=id;closeDialogs();openAuth();toast('Sign in by email to purchase.');return;}
- const b=$('#purchaseNow');if(b){b.disabled=true;b.textContent='OPENING STRIPE...';}
- try{const {url}=await api('/api/checkout',{method:'POST',body:JSON.stringify({sku:id,accepted_terms:true})});window.location.assign(url);}
- catch(e){toast(e.message);if(b){b.disabled=false;b.textContent='PURCHASE SECURELY ↗';}}
+ if(!state.user){state.pendingProduct=id;state.pendingDiscount=discountCode;closeDialogs();openAuth();toast('Sign in by email to purchase.');return;}
+ const b=$('#purchaseNow');if(b){b.disabled=true;b.textContent='VERIFYING TOTAL...';}
+ try{
+  const quote=await api('/api/discount/quote?sku='+encodeURIComponent(id)+'&code='+encodeURIComponent(discountCode));
+  if(quote.saved>0)$('#discountFeedback').textContent=quote.code+' applied · Total: '+money(quote.total);
+  const {url}=await api('/api/checkout',{method:'POST',body:JSON.stringify({sku:id,accepted_terms:true,discount_code:discountCode})});
+  window.location.assign(url);
+ }catch(e){toast(e.message);if(b){b.disabled=false;b.textContent='PURCHASE SECURELY ↗';}}
 }
 function openAuth(){state.authStep='email';$('#authError').textContent='';$('#email').disabled=false;$('#email').hidden=false;$('#emailCode').hidden=true;$('#emailCodeLabel').hidden=true;$('#requestAgain').hidden=true;$('#authSubmit').textContent='Send sign-in code ↗';openDialog($('#authDialog'));}
 function renderAccount(){$('#accountBtn').textContent=state.user?'My account':'Sign in';}
