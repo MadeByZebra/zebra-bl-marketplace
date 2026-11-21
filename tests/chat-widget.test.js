@@ -58,5 +58,5 @@ test('operator inbox is first-party and blocks crawlers',()=>{
  assert.match(html,/src="\/zebra-inbox\.js"/);
  assert.match(app,/api\/zebra-chat\/admin\/threads/);
  assert.match(app,/Notification\.requestPermission/);
- assert.match(app,/Join chat/);
+ assert.match(html,/Join chat/);
 });
