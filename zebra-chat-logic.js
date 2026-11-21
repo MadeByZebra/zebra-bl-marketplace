@@ -33,7 +33,7 @@ export function faqReply(input){
  if(includes(q,/\b(class [abc]|str grinder|end grinder|grind|classes)\b/)){
   return 'STR and END Grinders currently support Class A only. Class B and Class C are planned, not guaranteed. See '+SHOP_LINKS.scripts+' for product details.';
  }
- if(includes(q,/\b(price|cost|discount|coupon|promo|payment|paywall|checkout|credit card)\b/)){
+ if(includes(q,/\b(price|cost|discount|coupon|promo|payment|pay|paying|paywall|checkout|credit card)\b/)){
   return 'Real purchases are not yet available: Zebra’s Shop is testing Stripe sandbox checkout. No real charge is created by a sandbox test payment. Product prices and offers should be confirmed on '+SHOP_LINKS.scripts+'. Please never enter card details in this chat.';
  }
  if(includes(q,/\b(install|compatible|requirements|windows|roblox|executor|setup|does .* work)\b/)){
