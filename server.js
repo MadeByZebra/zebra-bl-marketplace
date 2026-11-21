@@ -265,7 +265,8 @@ app.get('/api/receipt/:sessionId',requireUser,async(req,res)=>{
   const charge=pi.latest_charge;
   const url=typeof charge==='object'&&charge?.receipt_url;
   if(!url||!/^https:\/\/pay\.stripe\.com\//.test(url))return res.status(404).json({error:'Stripe receipt not available yet.'});
-  res.json({url});
+  res.set('Referrer-Policy','no-referrer');
+  res.redirect(302,url);
  }catch(e){safeError(res,e);}
 });
 // Every paid item receives one active secret. The public launcher and source are different assets.
