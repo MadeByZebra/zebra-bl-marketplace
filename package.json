@@ -12,7 +12,7 @@
     "dev": "node --watch server.js",
     "test": "node --test tests/*.test.js",
     "obfuscate": "node scripts/build-payloads.mjs",
-    "prestart": "node --check server.js && node --check public/app.js && node --check public/account/account.js && node --check email-delivery.js && node --check public/tawk-chat.js && node --check support-request.js && node --check public/support-form.js && node --check zebra-chat-server.js && node --check zebra-chat-logic.js && node --check public/zebra-support-chat.js && node --check public/zebra-inbox.js"
+    "prestart": "node --check server.js && node --check public/app.js && node --check public/account/account.js && node --check email-delivery.js && node --check support-request.js && node --check public/support-form.js && node --check zebra-chat-server.js && node --check zebra-chat-logic.js && node --check public/zebra-support-chat.js && node --check public/zebra-inbox.js"
   },
   "dependencies": {
     "express": "^4.21.2",
