@@ -17,5 +17,5 @@ export function hashEmailOtp(email,code,env=process.env){
  const key=getOtpKey(env);
  if(!key)throw Error('Email OTP signing is not configured.');
  return createHmac('sha256',key).update(String(email).toLowerCase())
-  .update('\\0').update(String(code)).digest('hex');
+  .update(String.fromCharCode(0)).update(String(code)).digest('hex');
 }
