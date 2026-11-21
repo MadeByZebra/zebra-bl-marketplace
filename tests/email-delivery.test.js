@@ -60,7 +60,7 @@ test('Brevo credential check does not send mail or disclose account details',asy
 test('Brevo unauthorized, forbidden, or network errors produce safe statuses',async()=>{
  const env={BREVO_API_KEY:'dummy',BREVO_FROM_EMAIL:'owner@example.com'};
  const denied=await verifyEmailProvider(env,async()=>({ok:false,status:401}));
- assert.deepEqual(denied,{provider:'brevo',auth:'unauthorized'});
+ assert.deepEqual(denied,{provider:'brevo',auth:'unauthorized',detail:'unclassified'});
  const blocked=await verifyEmailProvider(env,async()=>({ok:false,status:403}));
  assert.equal(blocked.auth,'forbidden');
  const offline=await verifyEmailProvider(env,async()=>{throw new Error('network timeout')});
@@ -76,4 +76,21 @@ test('Brevo 401 send failure provides actionable message without exposing the AP
   assert.ok(!err.message.includes(env.BREVO_API_KEY));
   return true;
  });
+});
+
+test('Brevo 401 classifications do not expose provider error messages',async()=>{
+ const env={BREVO_API_KEY:'dummy',BREVO_FROM_EMAIL:'owner@example.com'};
+ const cases=[
+  ['Unauthorized: Key not found','invalid_key'],
+  ['IP address not authorized','ip_restricted'],
+  ['Access denied for resource','permission_denied'],
+  ['Account under validation','account_not_approved']
+ ];
+ for(const [message,detail] of cases){
+  const result=await verifyEmailProvider(env,async()=>({
+   ok:false,status:401,json:async()=>({code:'unauthorized',message})
+  }));
+  assert.deepEqual(result,{provider:'brevo',auth:'unauthorized',detail});
+  assert.ok(!JSON.stringify(result).includes(message));
+ }
 });
