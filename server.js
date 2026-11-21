@@ -119,14 +119,30 @@ async function fetchUser(req){
 async function requireUser(req,res,next){try{req.user=await fetchUser(req);if(!req.user)return res.status(401).json({error:'Sign in to continue.'});next();}catch(e){safeError(res,e);}}
 function validateOrigin(req,res,next){const origin=req.get('origin');if(origin&&origin!==SITE.origin)return res.status(403).json({error:'Invalid request origin.'});next();}
 async function grantFromStripe(session){
- if(!session||session.payment_status!=='paid'||session.currency!=='usd')return false;
+ if(!session||!['paid','no_payment_required'].includes(session.payment_status)||session.currency!=='usd')return false;
  const order=(await query('SELECT * FROM purchases WHERE session_id=$1',[session.id]))[0];
  if(!order||!byId[order.sku]||order.status==='revoked')return false;
  if(session.client_reference_id!==order.user_id||session.metadata?.user_id!==order.user_id||session.metadata?.sku!==order.sku)return false;
  // Immutable purchase price: the order was created by our own server, so
  // later changes to catalog prices or retired coupons must not revoke buyers.
- if(!Number.isSafeInteger(Number(order.amount))||Number(order.amount)<50||
+ if(!Number.isSafeInteger(Number(order.amount))||Number(order.amount)<0||
     Number(session.amount_total)!==Number(order.amount))return false;
+ if(order.amount===0){
+  // A zero-dollar order must be a completed Stripe Checkout with the exact
+  // server-issued 100%-off coupon and a matching one-account reservation.
+  const claimed=(await query('SELECT * FROM free_promo_redemptions WHERE user_id=$1 AND session_id=$2 AND sku=$3',
+    [order.user_id,session.id,order.sku]))[0];
+  if(!claimed||session.status!=='complete'||session.metadata?.free_promo!=='v1'||
+     session.payment_intent||session.amount_subtotal<=0||
+     Number(session.total_details?.amount_discount)!==Number(session.amount_subtotal)||
+     session.payment_status!=='paid'&&session.payment_status!=='no_payment_required')return false;
+  await query(`UPDATE purchases SET status='paid',paid_at=COALESCE(paid_at,$1)
+    WHERE session_id=$2 AND status!='revoked'`,[now(),session.id]);
+  await query('UPDATE free_promo_redemptions SET redeemed_at=$1 WHERE user_id=$2 AND session_id=$3 AND redeemed_at IS NULL',
+    [now(),order.user_id,session.id]);
+  return true;
+ }
+ if(order.amount<50||session.payment_status!=='paid')return false;
  // Verify the charge has not already been refunded or disputed before granting access.
  if(!session.payment_intent)return false;
  const intent=await stripe.paymentIntents.retrieve(typeof session.payment_intent==='object'?session.payment_intent.id:session.payment_intent,{expand:['latest_charge']});
@@ -182,7 +198,7 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
  try{
   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(evt.type)){
     const session=evt.data.object;
-    if(session.payment_status==='paid'&&await grantFromStripe(await stripe.checkout.sessions.retrieve(session.id))){
+    if(['paid','no_payment_required'].includes(session.payment_status)&&await grantFromStripe(await stripe.checkout.sessions.retrieve(session.id))){
       await sendPurchaseConfirmation(session.id);
     }
   }
