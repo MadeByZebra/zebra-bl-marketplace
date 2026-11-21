@@ -83,14 +83,14 @@ export async function sendShopEmail({to,subject,text,html,idempotencyKey,env=pro
  }
  return {accepted:true,provider:type};
 }
-export function receiptEmail({name,totalCents,orderId,storeUrl,receiptUrl}){
+export function receiptEmail({name,totalCents,orderId,storeUrl,receiptUrl,testMode=false}){
  const price='$'+(Number(totalCents)/100).toFixed(2);
  const safeTitle=String(name||'your purchase').slice(0,160);
  const lines=[
-  'Thank you for your Zebra\'s Shop purchase.',
+  testMode?'This is a STRIPE SANDBOX TEST. NO REAL PAYMENT WAS MADE.':'Thank you for your Zebra\'s Shop purchase.',
   '',
   'Item: '+safeTitle,
-  'Paid: '+price+' USD',
+  (testMode?'Simulated amount: ':'Paid: ')+price+' USD',
   'Order reference: '+orderId,
   '',
   'Your purchased items are available in your private library:',
