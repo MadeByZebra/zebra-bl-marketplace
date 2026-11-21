@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
 import { discountQuote } from './discounts.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
+import { activeMailer,mailerMode,sendShopEmail,receiptEmail } from './email-delivery.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -31,7 +32,8 @@ const schema=[
  `CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires_at BIGINT NOT NULL)`,
  `CREATE TABLE IF NOT EXISTS purchases (session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_intent TEXT, created_at BIGINT NOT NULL, paid_at BIGINT)`,
  `CREATE TABLE IF NOT EXISTS licenses (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, created_at BIGINT NOT NULL, revoked_at BIGINT, last_used_at BIGINT)`,
- `CREATE UNIQUE INDEX IF NOT EXISTS licenses_one_active_per_product ON licenses (user_id,sku) WHERE revoked_at IS NULL`
+ `CREATE UNIQUE INDEX IF NOT EXISTS licenses_one_active_per_product ON licenses (user_id,sku) WHERE revoked_at IS NULL`,
+ `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`
 ];
 async function query(sql,values=[]){
  if(pool){const r=await pool.query(sql,values);return r.rows;}
@@ -42,7 +44,7 @@ async function init(){for(const sql of schema)await query(sql);}
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const emailValid = email => email.length<=254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const codeHash=(email,code)=>hashEmailOtp(email,code);
-const mailReady=()=>!!(process.env.RESEND_API_KEY&&process.env.MAIL_FROM&&getOtpKey());
+const mailReady=()=>!!(activeMailer()&&getOtpKey());
 const emailAuthLimiter=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false});
 const now=()=>Date.now();
 const makeHash=password=>{const salt=randomBytes(16).toString('hex');return `${salt}:${scryptSync(password,salt,64).toString('hex')}`;};
@@ -63,7 +65,7 @@ const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
 const paymentReady=()=>!!(stripe&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&emailValid(process.env.SUPPORT_EMAIL||'')&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(testMode()||process.env.ALLOW_LIVE_SALES==='1');
 const testCheckoutReady=()=>checkoutReady()&&testMode()&&process.env.ENABLE_TEST_CHECKOUT==='1';
-function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',email_login_ready:mailReady()&&usingPostgres,support_email:process.env.SUPPORT_EMAIL||null,catalog};}
+function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',email_login_ready:mailReady()&&usingPostgres,email_sender_mode:mailerMode(),support_email:process.env.SUPPORT_EMAIL||null,catalog};}
 function safeError(res,err,code=500){console.error(err);return res.status(code).json({error:'Request could not be completed.'});}
 async function fetchUser(req){
  const token=parseCookie(req.headers.cookie,'bl_session');if(!token||!/^[a-f0-9]{64}$/.test(token))return null;
@@ -90,13 +92,54 @@ async function grantFromStripe(session){
   paid_at=COALESCE(paid_at,$2) WHERE session_id=$3 AND status!='revoked'`,[intent.id,now(),session.id]);
  return true;
 }
+
+// Send a separate purchase confirmation after a verified payment. Stripe also
+// supports its own official emailed card receipts from Dashboard settings.
+// A unique DB record ensures replayed webhooks don't duplicate confirmations.
+async function sendPurchaseConfirmation(sessionId){
+ if(!activeMailer())return;
+ const order=(await query(`SELECT p.session_id,p.sku,p.amount,u.email
+ FROM purchases p JOIN users u ON u.id=p.user_id
+ WHERE p.session_id=$1 AND p.status='paid'`,[sessionId]))[0];
+ if(!order||order.sku==='checkout-test')return;
+ const claim=await query(
+  'INSERT INTO purchase_notifications(session_id,sent_at) VALUES ($1,$2) ON CONFLICT(session_id) DO NOTHING RETURNING session_id',
+  [sessionId,now()]);
+ if(!claim.length)return;
+ try{
+  let stripeReceipt=null;
+  try{
+   const session=await stripe.checkout.sessions.retrieve(sessionId);
+   if(session.payment_intent){
+    const intent=await stripe.paymentIntents.retrieve(
+      typeof session.payment_intent==='string'?session.payment_intent:session.payment_intent.id,
+      {expand:['latest_charge']});
+    if(intent.latest_charge&&typeof intent.latest_charge!=='string')
+     stripeReceipt=intent.latest_charge.receipt_url||null;
+   }
+  }catch(_e){/* Stripe receipts remain accessible from purchase history. */}
+  await sendShopEmail({
+    to:order.email,subject:'Your Zebra\'s Shop purchase is ready',
+    text:receiptEmail({name:byId[order.sku]?.title,totalCents:order.amount,
+      orderId:sessionId,storeUrl:SITE.origin,receiptUrl:stripeReceipt}),
+    idempotencyKey:'zebra-shop-order-'+sessionId
+  });
+ }catch(e){
+  await query('DELETE FROM purchase_notifications WHERE session_id=$1',[sessionId]);
+  console.warn('Purchase email delivery pending',e.code||'EMAIL_SEND_FAILED',e.status||'');
+ }
+}
+
 // Registered BEFORE JSON parser: Stripe signatures require the untouched raw body.
 app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb'}),async(req,res)=>{
  if(!stripe||!webSecret)return res.sendStatus(503);
  let evt;try{evt=stripe.webhooks.constructEvent(req.body,req.get('stripe-signature'),webSecret);}catch(e){return res.status(400).send('Invalid Stripe signature');}
  try{
   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(evt.type)){
-    const s=evt.data.object;if(s.payment_status==='paid')await grantFromStripe(await stripe.checkout.sessions.retrieve(s.id));
+    const session=evt.data.object;
+    if(session.payment_status==='paid'&&await grantFromStripe(await stripe.checkout.sessions.retrieve(session.id))){
+      await sendPurchaseConfirmation(session.id);
+    }
   }
   if(['charge.refunded','charge.dispute.created'].includes(evt.type)){
     // Dispute events carry a charge ID, not a PaymentIntent. Retrieve the charge
@@ -138,8 +181,14 @@ app.post('/api/auth/request-code',emailAuthLimiter,async(req,res)=>{
   const code=String(randomInt(0,1000000)).padStart(6,'0');
   const time=now();
   await query(`INSERT INTO email_codes (email,code_hash,attempts,expires_at,sent_at) VALUES ($1,$2,0,$3,$4) ON CONFLICT(email) DO UPDATE SET code_hash=EXCLUDED.code_hash,attempts=0,expires_at=EXCLUDED.expires_at,sent_at=EXCLUDED.sent_at`,[email,codeHash(email,code),time+10*60*1000,time]);
-  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:process.env.MAIL_FROM,to:[email],subject:'Your Zebra sign-in code',text:`Your Zebra sign-in code is ${code}. It expires in 10 minutes. If you did not request it, ignore this email.`}),signal:AbortSignal.timeout(10000)});
-  if(!response.ok){await query('DELETE FROM email_codes WHERE email=$1',[email]);return res.status(503).json({error:'Email could not be sent. Please try again later.'});}
+  try{
+   await sendShopEmail({to:email,subject:'Your Zebra\'s Shop sign-in code',
+     text:`Your Zebra\'s Shop sign-in code is ${code}. It expires in 10 minutes. If you did not request it, ignore this email.`});
+  }catch(mailErr){
+   await query('DELETE FROM email_codes WHERE email=$1',[email]);
+   console.warn('Sign-in email provider error',mailErr.code||'EMAIL_SEND_FAILED',mailErr.status||'');
+   return res.status(503).json({error:mailErr.message});
+  }
   res.json({ok:true,message:'Check your email for a six-digit code.',expires_in:600});
  }catch(e){safeError(res,e);}
 });
@@ -191,13 +240,32 @@ app.post('/api/confirm',checkoutLimiter,requireUser,async(req,res)=>{
   if(!order)return res.status(404).json({error:'Purchase not found for this account.'});
   if(order.status==='revoked')return res.status(403).json({error:'This purchase is no longer active.'});
   const session=await stripe.checkout.sessions.retrieve(sessionId);
-  const paid=await grantFromStripe(session);res.json({paid});
+  const paid=await grantFromStripe(session);
+  if(paid)await sendPurchaseConfirmation(sessionId);
+  res.json({paid});
  }catch(e){safeError(res,e);}
 });
 app.get('/api/library',requireUser,async(req,res)=>{
  try{
-  const orders=await query(`SELECT sku,paid_at,session_id FROM purchases WHERE user_id=$1 AND status='paid' ORDER BY paid_at DESC`,[req.user.id]);
-  const owned=[...new Set(orders.flatMap(o=>includedIds(byId[o.sku]||{id:o.sku})))];res.json({owned,orders:orders.map(({sku,paid_at})=>({sku,paid_at}))});
+  const orders=await query(`SELECT sku,amount,paid_at,session_id FROM purchases WHERE user_id=$1 AND status='paid' ORDER BY paid_at DESC`,[req.user.id]);
+  const owned=[...new Set(orders.flatMap(o=>includedIds(byId[o.sku]||{id:o.sku})))];
+  res.json({owned,orders:orders.map(({sku,amount,paid_at,session_id})=>({sku,amount,paid_at,session_id}))});
+ }catch(e){safeError(res,e);}
+});
+// Authenticated users can open their own official Stripe hosted receipts.
+app.get('/api/receipt/:sessionId',requireUser,async(req,res)=>{
+ const id=String(req.params.sessionId||'');
+ if(!/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(id))return res.sendStatus(400);
+ try{
+  const order=(await query('SELECT payment_intent FROM purchases WHERE session_id=$1 AND user_id=$2 AND status=\'paid\'',
+    [id,req.user.id]))[0];
+  if(!order||!order.payment_intent)return res.sendStatus(404);
+  if(!stripe)return res.status(503).json({error:'Receipts are temporarily unavailable.'});
+  const pi=await stripe.paymentIntents.retrieve(order.payment_intent,{expand:['latest_charge']});
+  const charge=pi.latest_charge;
+  const url=typeof charge==='object'&&charge?.receipt_url;
+  if(!url||!/^https:\/\/pay\.stripe\.com\//.test(url))return res.status(404).json({error:'Stripe receipt not available yet.'});
+  res.json({url});
  }catch(e){safeError(res,e);}
 });
 // Every paid item receives one active secret. The public launcher and source are different assets.
@@ -259,7 +327,7 @@ app.get('/api/health',(_req,res)=>{
  res.json({
   ok:true,service:'zebra-store',checkout:checkoutReady()?'configured':'disabled',
   mode:testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unconfigured',
-  email_login_ready:mailReady()&&usingPostgres,
+  email_login_ready:mailReady()&&usingPostgres,email_sender_mode:mailerMode(),
   stripe_api_ready:!!stripe,webhook_configured:!!webSecret,
   postgres_ready:usingPostgres,vault_ready:vaultReady,
   disabled_by_owner:process.env.DISABLE_CHECKOUT==='1'
