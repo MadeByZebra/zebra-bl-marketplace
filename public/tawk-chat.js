@@ -108,6 +108,11 @@
     updateOpened(false);
   };
   api.onChatHidden = function () { updateOpened(false); };
+  // Browsers may restore My Library from back-forward cache. Don't leave
+  // the storefront locked unless this chat really remains maximized.
+  window.addEventListener('pageshow', function () {
+    if (!opening) document.documentElement.classList.remove('zebra-chat-scroll-locked');
+  });
 
   function buildTrigger() {
     trigger = document.createElement('button');
