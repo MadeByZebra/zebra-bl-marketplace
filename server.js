@@ -62,7 +62,7 @@ const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft
 const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
 const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
-const paymentReady=()=>!!(stripe&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&emailValid(process.env.SUPPORT_EMAIL||'')&&(!LIVE||!!process.env.PUBLIC_URL));
+const paymentReady=()=>!!(stripe&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(testMode()||(process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'));
 const testCheckoutReady=()=>checkoutReady()&&testMode()&&process.env.ENABLE_TEST_CHECKOUT==='1';
 function checkoutStatus(){
@@ -72,7 +72,7 @@ function checkoutStatus(){
  if(!usingPostgres)return 'The purchase database is not configured. No charge was made.';
  if(!mailReady())return 'Customer email delivery is not configured. No charge was made.';
  if(mailerMode()==='resend_test_only'&&!testMode())return 'Customer email is restricted to testing; live checkout is unavailable.';
- if(!emailValid(process.env.SUPPORT_EMAIL||''))return 'Shop support contact is not configured. No charge was made.';
+ if(!testMode()&&!emailValid(process.env.SUPPORT_EMAIL||''))return 'Shop support contact is not configured. No charge was made.';
  if(!checkoutReady())return 'Payments are not available yet. No charge was made.';
  return null;
 }
