@@ -1,102 +1,215 @@
-(()=>{'use strict';
-const $=id=>document.getElementById(id);
-const status=(message,error=false)=>{$('accountStatus').textContent=message;$('accountStatus').classList.toggle('error',error)};
-const api=async(url,options={})=>{const res=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});let data={};try{data=await res.json()}catch{}if(!res.ok)throw Error(data.error||'Request failed');return data};
-let email='';
-let pendingCheckoutId=null;
-async function verifyCheckout(user){if(!pendingCheckoutId)return;const id=pendingCheckoutId;pendingCheckoutId=null;try{const data=await api('/api/confirm',{method:'POST',body:JSON.stringify({session_id:id})});await showAccount(user,data.paid);if(!data.paid)status('Stripe payment is still pending verification. No access has been issued.');}catch(e){status(e.message,true)}history.replaceState(null,'',location.pathname);}
-const setBusy=(button,busy)=>{button.disabled=busy};
-const showLogin=()=>{$('loginArea').hidden=false;$('signedIn').hidden=true;$('emailForm').hidden=false;$('verifyForm').hidden=true;$('panelTitle').textContent='Sign in by email.'};
-function renderLibrary(items,catalog,orders=[]){
- $('libraryItems').replaceChildren();
- if(!items?.length){const p=document.createElement('p');p.className='account-status';p.textContent='No purchases yet. Your verified products will appear here.';$('libraryItems').append(p);return}
- for(const sku of items){const product=[...(catalog.products||[]),...(catalog.extras||[]),...(catalog.bundles||[])].find(p=>p.id===sku);
-  if(!product||product.testOnly)continue;
-  const row=document.createElement('div');row.className='library-item';
-  const info=document.createElement('div'),name=document.createElement('strong'),desc=document.createElement('span');
-  name.textContent=product.title;desc.textContent=product.kind==='download'?'Protected installer':'Licensed loadstring';
-  info.append(name,desc);row.append(info);
-  if(product.kind==='download'){const a=document.createElement('a');a.className='btn';a.href='/api/injector/download';a.textContent='Download installer ↗';row.append(a);}
-  else{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Generate loader ↗';b.addEventListener('click',async()=>{
-    b.disabled=true;status('Generating your personal license…');
-    try{const d=await api('/api/license/'+encodeURIComponent(sku),{method:'POST',body:'{}'});
-      const output=$('loaderResult');output.replaceChildren();
-      const pre=document.createElement('pre');pre.className='loader-output';pre.textContent=d.loadstring;
-      const copy=document.createElement('button');copy.className='btn';copy.textContent='Copy loadstring';
-      copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(d.loadstring);status('Loadstring copied. Do not share your personal key.')}catch{status('Clipboard permission denied. Copy the text manually.',true)}});
-      output.append(pre,copy);status('New loader generated. Older keys for this product have been revoked.');
-    }catch(e){status(e.message,true)}finally{b.disabled=false;}
-  });row.append(b);}
- $('libraryItems').append(row)}
- if(orders.length){
-  const heading=document.createElement('h3');heading.textContent='Order history & receipts';
-  heading.style.cssText='font-size:18px;letter-spacing:-.04em;margin:35px 0 8px';$('libraryItems').append(heading);
-  for(const order of orders){
-   const product=[...(catalog.products||[]),...(catalog.extras||[]),...(catalog.bundles||[])].find(p=>p.id===order.sku);
-   if(!product||product.testOnly)continue;
-   const row=document.createElement('div');row.className='library-item';
-   const item=document.createElement('div'),name=document.createElement('strong'),description=document.createElement('span');
-   name.textContent=product.title;
-   const cents=Number(order.amount),price=Number.isFinite(cents)?'
-async function showAccount(user,confirmed=false){
- $('loginArea').hidden=true;$('signedIn').hidden=false;$('panelTitle').textContent='Your private library.';$('signedInEmail').textContent=user.email;
- try{const [lib,store]=await Promise.all([api('/api/library'),api('/api/store')]);renderLibrary(lib.owned,store.catalog,lib.orders||[]);status(confirmed?'Payment verified. Your account library is up to date.':'Signed in. Your verified purchases appear below.');}
- catch(e){status(e.message,true)}
-}
-$('emailForm').addEventListener('submit',async e=>{e.preventDefault();email=$('loginEmail').value.trim().toLowerCase();
- const button=$('sendCode');setBusy(button,true);status('Sending a one-time code…');
- try{await api('/api/auth/request-code',{method:'POST',body:JSON.stringify({email})});
- $('emailForm').hidden=true;$('verifyForm').hidden=false;$('loginCode').focus();status('Check your inbox for the six-digit code. It expires in ten minutes.');
- }catch(e){status(e.message,true)}finally{setBusy(button,false)}});
-$('verifyForm').addEventListener('submit',async e=>{e.preventDefault();const button=$('verifyCode');setBusy(button,true);
- try{const d=await api('/api/auth/verify-code',{method:'POST',body:JSON.stringify({email,code:$('loginCode').value.trim()})});await showAccount(d.user);await verifyCheckout(d.user);}
- catch(e){status(e.message,true)}finally{setBusy(button,false)}});
-$('changeEmail').addEventListener('click',showLogin);
-$('signOut').addEventListener('click',async()=>{try{await api('/api/logout',{method:'POST',body:'{}'});showLogin();status('Signed out.')}catch(e){status(e.message,true)}});
-async function startup(){
- try{const [me,store]=await Promise.all([api('/api/me'),api('/api/store')]);if(me.user)await showAccount(me.user);else if(!store.email_login_ready)status('Email sign-in is not configured yet. No sign-in email can be sent.',true);else if(store.email_sender_mode==='resend_test_only')status('Testing mode: sign-in codes currently reach only the email registered with Resend. Public sign-in is being configured.');
- const url=new URL(location.href);if(url.searchParams.get('checkout')==='success'&&url.searchParams.get('session_id')){
-  pendingCheckoutId=url.searchParams.get('session_id');
-  if(me.user)await verifyCheckout(me.user);
-  else status('Sign in using the same email used for checkout to verify your purchase.');
- }else if(url.searchParams.get('checkout')==='cancel'){status('Checkout canceled. No purchase was made.');history.replaceState(null,'',location.pathname);}
- }catch(e){status('Unable to connect to Zebra’s Shop: '+e.message,true)}
-}startup();
-})();+(cents/100).toFixed(2):'';
-   description.textContent=new Date(Number(order.paid_at)).toLocaleDateString()+' · '+price+' · Paid';
-   item.append(name,description);row.append(item);
-   if(typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
-    const link=document.createElement('a');link.className='btn';
-    link.href='/api/receipt/'+encodeURIComponent(order.session_id);
-    link.target='_blank';link.rel='noopener noreferrer';
-    link.textContent='Stripe receipt ↗';row.append(link);
-   }
-   $('libraryItems').append(row);
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const alert = (message, isError=false) => {
+    const node=$('accountStatus');
+    if(!node)return;
+    node.textContent=message;
+    node.classList.toggle('error',Boolean(isError));
+  };
+  async function api(url,options={}) {
+    const response=await fetch(url,{
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      ...options
+    });
+    let result={};
+    try{result=await response.json();}catch(_ignored){}
+    if(!response.ok)throw new Error(result.error||'The request could not be completed.');
+    return result;
   }
- }
-}
-async function showAccount(user,confirmed=false){
- $('loginArea').hidden=true;$('signedIn').hidden=false;$('panelTitle').textContent='Your private library.';$('signedInEmail').textContent=user.email;
- try{const [lib,store]=await Promise.all([api('/api/library'),api('/api/store')]);renderLibrary(lib.owned,store.catalog);status(confirmed?'Payment verified. Your account library is up to date.':'Signed in. Your verified purchases appear below.');}
- catch(e){status(e.message,true)}
-}
-$('emailForm').addEventListener('submit',async e=>{e.preventDefault();email=$('loginEmail').value.trim().toLowerCase();
- const button=$('sendCode');setBusy(button,true);status('Sending a one-time code…');
- try{await api('/api/auth/request-code',{method:'POST',body:JSON.stringify({email})});
- $('emailForm').hidden=true;$('verifyForm').hidden=false;$('loginCode').focus();status('Check your inbox for the six-digit code. It expires in ten minutes.');
- }catch(e){status(e.message,true)}finally{setBusy(button,false)}});
-$('verifyForm').addEventListener('submit',async e=>{e.preventDefault();const button=$('verifyCode');setBusy(button,true);
- try{const d=await api('/api/auth/verify-code',{method:'POST',body:JSON.stringify({email,code:$('loginCode').value.trim()})});await showAccount(d.user);await verifyCheckout(d.user);}
- catch(e){status(e.message,true)}finally{setBusy(button,false)}});
-$('changeEmail').addEventListener('click',showLogin);
-$('signOut').addEventListener('click',async()=>{try{await api('/api/logout',{method:'POST',body:'{}'});showLogin();status('Signed out.')}catch(e){status(e.message,true)}});
-async function startup(){
- try{const [me,store]=await Promise.all([api('/api/me'),api('/api/store')]);if(me.user)await showAccount(me.user);else if(!store.email_login_ready)status('Email sign-in is not configured yet. No sign-in email can be sent.',true);
- const url=new URL(location.href);if(url.searchParams.get('checkout')==='success'&&url.searchParams.get('session_id')){
-  pendingCheckoutId=url.searchParams.get('session_id');
-  if(me.user)await verifyCheckout(me.user);
-  else status('Sign in using the same email used for checkout to verify your purchase.');
- }else if(url.searchParams.get('checkout')==='cancel'){status('Checkout canceled. No purchase was made.');history.replaceState(null,'',location.pathname);}
- }catch(e){status('Unable to connect to Zebra’s Shop: '+e.message,true)}
-}startup();
+  let email='';
+  let pendingCheckoutId=null;
+  let resendAllowedAt=0;
+  const dateLabel = value => {
+    const dt=new Date(Number(value));
+    return Number.isFinite(dt.getTime())?dt.toLocaleDateString():'Date unavailable';
+  };
+  const priceLabel = value => {
+    const cents=Number(value);
+    return Number.isSafeInteger(cents)&&cents>=0?'$'+(cents/100).toFixed(2):'Price unavailable';
+  };
+  function catalogItem(catalog,sku){
+    return [...(catalog.products||[]),...(catalog.extras||[]),...(catalog.bundles||[])]
+      .find(product=>product.id===sku);
+  }
+  function element(tag,text,cls){
+    const node=document.createElement(tag);
+    if(text!==undefined)node.textContent=String(text);
+    if(cls)node.className=cls;
+    return node;
+  }
+  function link(url,label){
+    const node=element('a',label,'btn');
+    node.href=url;
+    return node;
+  }
+  function showLogin(){
+    $('loginArea').hidden=false;
+    $('signedIn').hidden=true;
+    $('emailForm').hidden=false;
+    $('verifyForm').hidden=true;
+    $('panelTitle').textContent='Sign in by email.';
+    $('loginCode').value='';
+  }
+  function renderLibrary(owned,catalog,orders=[]){
+    const container=$('libraryItems');
+    container.replaceChildren();
+    if(!owned?.length)container.append(element('p','No purchases yet. Your verified products will appear here.','account-status'));
+    for(const sku of owned||[]){
+      const product=catalogItem(catalog,sku);
+      if(!product||product.testOnly)continue;
+      const row=element('div',undefined,'library-item');
+      const info=element('div');
+      info.append(element('strong',product.title),element('span',product.kind==='download'?'Protected installer':'Licensed loadstring'));
+      row.append(info);
+      if(product.kind==='download'){
+        row.append(link('/api/injector/download','Download installer ↗'));
+      }else{
+        const generate=element('button','Generate loader ↗','btn');
+        generate.type='button';
+        generate.addEventListener('click',async()=>{
+          generate.disabled=true;
+          alert('Generating your personal license…');
+          try{
+            const data=await api('/api/license/'+encodeURIComponent(sku),{method:'POST',body:'{}'});
+            const destination=$('loaderResult');
+            destination.replaceChildren();
+            const code=element('pre',data.loadstring,'loader-output');
+            const copy=element('button','Copy loadstring','btn');
+            copy.type='button';
+            copy.addEventListener('click',async()=>{
+              try{
+                await navigator.clipboard.writeText(data.loadstring);
+                alert('Copied. Keep your personal license private.');
+              }catch(_error){alert('Clipboard access denied. Copy the text manually.',true);}
+            });
+            destination.append(code,copy);
+            alert('New personal loader generated. The old key for this product is revoked.');
+          }catch(error){alert(error.message,true);}
+          finally{generate.disabled=false;}
+        });
+        row.append(generate);
+      }
+      container.append(row);
+    }
+    if(!orders.length)return;
+    const heading=element('h3','Order history & receipts');
+    heading.style.cssText='font-size:18px;letter-spacing:-.04em;margin:35px 0 8px';
+    container.append(heading);
+    for(const order of orders){
+      const product=catalogItem(catalog,order.sku);
+      if(!product||product.testOnly)continue;
+      const row=element('div',undefined,'library-item');
+      const info=element('div');
+      info.append(
+        element('strong',product.title),
+        element('span',dateLabel(order.paid_at)+' · '+priceLabel(order.amount)+' · Paid')
+      );
+      row.append(info);
+      if(typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
+        const receipt=link('/api/receipt/'+encodeURIComponent(order.session_id),'Stripe receipt ↗');
+        receipt.target='_blank';
+        receipt.rel='noopener noreferrer';
+        row.append(receipt);
+      }
+      container.append(row);
+    }
+  }
+  async function showAccount(user,confirmed=false){
+    $('loginArea').hidden=true;
+    $('signedIn').hidden=false;
+    $('panelTitle').textContent='Your private library.';
+    $('signedInEmail').textContent=user.email;
+    try{
+      const [library,store]=await Promise.all([api('/api/library'),api('/api/store')]);
+      renderLibrary(library.owned,store.catalog,library.orders||[]);
+      alert(confirmed?'Your payment was verified; your library is up to date.':'Signed in. Your verified purchases appear below.');
+    }catch(error){alert(error.message,true);}
+  }
+  async function verifyCheckout(user){
+    if(!pendingCheckoutId)return;
+    const id=pendingCheckoutId;
+    pendingCheckoutId=null;
+    try{
+      const data=await api('/api/confirm',{method:'POST',body:JSON.stringify({session_id:id})});
+      await showAccount(user,Boolean(data.paid));
+      if(!data.paid)alert('Payment is pending verification. No product access has been issued.');
+    }catch(error){alert(error.message,true);}
+    history.replaceState(null,'',location.pathname);
+  }
+  async function sendCode(isResend=false){
+    email=$('loginEmail').value.trim().toLowerCase();
+    if(!email){alert('Enter an email address.',true);return;}
+    const button=$(isResend?'resendCode':'sendCode');
+    if(button)button.disabled=true;
+    alert('Requesting your six-digit code…');
+    try{
+      await api('/api/auth/request-code',{method:'POST',body:JSON.stringify({email})});
+      $('emailForm').hidden=true;
+      $('verifyForm').hidden=false;
+      resendAllowedAt=Date.now()+60_000;
+      const again=$('resendCode');
+      if(again){
+        again.disabled=true;
+        setTimeout(()=>{again.disabled=Date.now()<resendAllowedAt;},60_100);
+      }
+      alert('Email accepted by the provider. Check your inbox and spam folder; the code expires in 10 minutes.');
+      if(!isResend)$('loginCode').focus();
+    }catch(error){alert(error.message,true);}
+    finally{if(button&&(!isResend||Date.now()>=resendAllowedAt))button.disabled=false;}
+  }
+  $('emailForm').addEventListener('submit',event=>{
+    event.preventDefault();
+    sendCode(false);
+  });
+  $('resendCode')?.addEventListener('click',()=>{
+    if(Date.now()<resendAllowedAt){
+      alert('Wait one minute before requesting another code.');
+      return;
+    }
+    sendCode(true);
+  });
+  $('verifyForm').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const button=$('verifyCode');
+    button.disabled=true;
+    try{
+      const data=await api('/api/auth/verify-code',{
+        method:'POST',
+        body:JSON.stringify({email,code:$('loginCode').value.trim()})
+      });
+      await showAccount(data.user);
+      await verifyCheckout(data.user);
+    }catch(error){alert(error.message,true);}
+    finally{button.disabled=false;}
+  });
+  $('changeEmail').addEventListener('click',()=>{showLogin();alert('Enter an email to request a code.');});
+  $('signOut').addEventListener('click',async()=>{
+    try{
+      await api('/api/logout',{method:'POST',body:'{}'});
+      $('loaderResult').replaceChildren();
+      showLogin();
+      alert('Signed out.');
+    }catch(error){alert(error.message,true);}
+  });
+  async function start(){
+    try{
+      const [me,store]=await Promise.all([api('/api/me'),api('/api/store')]);
+      if(me.user)await showAccount(me.user);
+      else if(!store.email_login_ready)alert('Email sign-in is not configured yet.',true);
+      else if(store.email_sender_mode==='resend_test_only')
+        alert('Testing mode: this sender can only email the address registered with Resend. Other customers cannot receive codes until a public sender is activated.');
+      const locationUrl=new URL(location.href);
+      if(locationUrl.searchParams.get('checkout')==='success'&&locationUrl.searchParams.get('session_id')){
+        pendingCheckoutId=locationUrl.searchParams.get('session_id');
+        if(me.user)await verifyCheckout(me.user);
+        else alert('Sign in with the same email used at checkout to verify the purchase.');
+      }else if(locationUrl.searchParams.get('checkout')==='cancel'){
+        alert('Checkout canceled. No payment was taken.');
+        history.replaceState(null,'',location.pathname);
+      }
+    }catch(error){alert('Unable to connect to the shop: '+error.message,true);}
+  }
+  start();
 })();
