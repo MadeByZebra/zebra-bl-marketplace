@@ -197,7 +197,9 @@
     try{
       const [me,store]=await Promise.all([api('/api/me'),api('/api/store')]);
       if(me.user)await showAccount(me.user);
-      else if(!store.email_login_ready)alert('Email sign-in is not configured yet.',true);
+      else if(store.email_provider_auth==='unauthorized')alert('Sign-in emails are temporarily unavailable because the email provider rejected this shop\'s credentials. The owner has been notified.',true);
+      else if(store.email_provider_auth==='forbidden')alert('Sign-in emails are temporarily unavailable while the email provider reviews or authorizes this shop.',true);
+      else if(!store.email_login_ready)alert('Email sign-in is temporarily unavailable. Please try again later.',true);
       else if(store.email_sender_mode==='resend_test_only')
         alert('Testing mode: this sender can only email the address registered with Resend. Other customers cannot receive codes until a public sender is activated.');
       const locationUrl=new URL(location.href);
