@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000">
+<meta name="robots" content="noindex,nofollow">
+<title>Zebra Support | Private Inbox</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/zebra-inbox.css">
+<script src="/zebra-inbox.js" defer></script>
+</head>
+<body>
+<div class="shell">
+ <aside class="sidebar">
+  <a class="back" href="/"><span class="logo">Z</span><span><strong>Zebra Support</strong><small>PRIVATE OPERATOR INBOX</small></span></a>
+  <div class="sidebar-top"><h1>Conversations</h1><button id="enableAlerts" type="button">Enable alerts</button></div>
+  <p id="sessionStatus" class="status" role="status">Checking your account…</p>
+  <div id="threadList" class="thread-list" role="list"></div>
+  <p class="sidebar-footer">Only the verified Zebra Support email account can view conversations. <a href="/support/#contact">Email support</a></p>
+ </aside>
+ <main class="conversation">
+  <header class="main-head">
+   <div><span class="eyebrow">CUSTOMER SUPPORT / ZEBRA'S SHOP</span><h2 id="threadTitle">Select a conversation</h2></div>
+   <div class="head-actions"><span id="threadStatus" class="thread-state">No conversation</span><button id="join" type="button" disabled>Join chat</button><button id="close" type="button" disabled>Close</button></div>
+  </header>
+  <div id="messages" class="messages" role="log" aria-live="polite">
+   <div class="empty"><span class="logo big">Z</span><h3>Talk to customers directly.</h3><p>Automated FAQ answers come first. When a visitor asks for a person, the conversation moves into your queue. Select it and click Join chat.</p></div>
+  </div>
+  <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+  <form id="replyForm" class="reply-form">
+   <textarea id="reply" maxlength="1200" rows="2" placeholder="Select a conversation before replying…" disabled></textarea>
+   <button id="send" type="submit" disabled>Send reply →</button>
+  </form>
+ </main>
+</div>
+</body>
+</html>
