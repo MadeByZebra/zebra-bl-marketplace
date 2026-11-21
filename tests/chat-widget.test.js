@@ -60,7 +60,11 @@ test('email support opens the on-site form while preserving an explicit mail-app
 });
 test('support center offers Gmail compose as an alternative to default mail apps',()=>{
   const html=readFileSync(new URL('../public/support/index.html',import.meta.url),'utf8');
-  assert.ok(html.includes('Email via your mail app'));
+  assert.ok(html.includes('Send a support request'));
+  assert.ok(html.includes('Use default email app'));
+  assert.ok(html.includes('id="zebra-support-form"'));
+  assert.ok(html.includes('zebra-contact-fallback'));
+
   assert.ok(html.includes('Compose in Gmail'));
   assert.ok(html.includes('mail.google.com/mail/?view=cm'));
   assert.ok(html.includes('to=zebrablshopofficial%40gmail.com'));
