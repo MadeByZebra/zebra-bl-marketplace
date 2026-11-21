@@ -70,3 +70,18 @@ test('first-party support form has accessible required fields, API and mail-prov
  assert.match(server,/sendShopEmail\(\{to:destination,replyTo:input\.email/);
  assert.match(chat,/const supportFormLink = '\/support\/#contact'/);
 });
+
+
+test('every storefront email-contact button has a working form href without JS',()=>{
+ const paths=['../public/index.html','../public/scripts/index.html',
+   '../public/account/index.html','../public/zflag/index.html',
+   '../public/support/index.html','../public/privacy/index.html',
+   '../public/terms/index.html'];
+ for(const path of paths){
+  const html=readFileSync(new URL(path,import.meta.url),'utf8');
+  assert.ok(html.includes('href="/support/#contact"'),path+' must link to support form');
+  const links=[...html.matchAll(/<a\b[^>]*>/gi)].map(x=>x[0]);
+  const bad=links.filter(tag=>/href="mailto:zebrablshopofficial@gmail\.com/i.test(tag)&&!/data-zebra-email-client/.test(tag));
+  assert.equal(bad.length,0,path+' must not rely on mailto except explicit fallback');
+ }
+});
