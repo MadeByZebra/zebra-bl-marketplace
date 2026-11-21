@@ -65,7 +65,18 @@ const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
 const paymentReady=()=>!!(stripe&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&emailValid(process.env.SUPPORT_EMAIL||'')&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(testMode()||(process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'));
 const testCheckoutReady=()=>checkoutReady()&&testMode()&&process.env.ENABLE_TEST_CHECKOUT==='1';
-function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',email_login_ready:mailReady()&&usingPostgres,email_sender_mode:mailerMode(),support_email:process.env.SUPPORT_EMAIL||null,catalog};}
+function checkoutStatus(){
+ if(process.env.DISABLE_CHECKOUT==='1')return 'Payments are paused until the Stripe sandbox and customer email delivery are verified. No charge was made.';
+ if(!stripe||!testMode()&&process.env.ALLOW_LIVE_SALES!=='1')return 'Stripe test payments are not connected. No charge was made.';
+ if(!/^whsec_/.test(webSecret||''))return 'Stripe payment verification is not connected yet. No charge was made.';
+ if(!usingPostgres)return 'The purchase database is not configured. No charge was made.';
+ if(!mailReady())return 'Customer email delivery is not configured. No charge was made.';
+ if(mailerMode()==='resend_test_only'&&!testMode())return 'Customer email is restricted to testing; live checkout is unavailable.';
+ if(!emailValid(process.env.SUPPORT_EMAIL||''))return 'Shop support contact is not configured. No charge was made.';
+ if(!checkoutReady())return 'Payments are not available yet. No charge was made.';
+ return null;
+}
+function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',email_login_ready:mailReady()&&usingPostgres,email_sender_mode:mailerMode(),checkout_message:checkoutStatus(),support_email:process.env.SUPPORT_EMAIL||null,catalog};}
 function safeError(res,err,code=500){console.error(err);return res.status(code).json({error:'Request could not be completed.'});}
 async function fetchUser(req){
  const token=parseCookie(req.headers.cookie,'bl_session');if(!token||!/^[a-f0-9]{64}$/.test(token))return null;
@@ -215,7 +226,7 @@ app.post('/api/logout',requireUser,async(req,res)=>{
  try{const token=parseCookie(req.headers.cookie,'bl_session');await query('DELETE FROM sessions WHERE token_hash=$1',[sha(token)]);clearCookie(res);res.json({ok:true});}catch(e){safeError(res,e);}
 });
 app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
- if(!checkoutReady())return res.status(503).json({error:'Checkout is not configured. No payment was taken.'});
+ if(!checkoutReady())return res.status(503).json({error:checkoutStatus()||'Checkout is unavailable. No payment was taken.'});
  if(req.body?.accepted_terms!==true)return res.status(400).json({error:'Please accept store terms before purchase.'});
  const sku=String(req.body?.sku||''),item=byId[sku];if(!item||!Number.isInteger(item.price)||item.price<50||item.unavailable&&sku!=='checkout-test'||sku==='checkout-test'&&!testCheckoutReady()||sku!=='checkout-test'&&includedIds(item).some(id=>{const entry=byId[id];return !entry?.file||!hasSealed(SCRIPT_DIR,entry.file);}))return res.status(400).json({error:'Product is not available for paid checkout yet.'});
  const quote=discountQuote(item,req.body?.discount_code);
