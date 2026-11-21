@@ -121,7 +121,7 @@ const previewModes={
 };
 function updatePreview(mode){
  const list=previewModes[mode];if(!list)return;
- $$('#product-stage [data-preview-tab]').forEach(b=>{const on=b.dataset.previewTab===mode;b.classList.toggle('is-active',on);b.setAttribute('aria-pressed',String(on));});
+ $$('#product-stage [data-preview-tab]').forEach(b=>{const on=b.dataset.previewTab===mode;b.classList.toggle('is-active',on);if(b.classList.contains('visual-sidebar-item'))b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
  $('#previewRows').innerHTML=list.map(([icon,title,desc,pill])=>`<div class="preview-row"><div class="preview-row-symbol">${icon}</div><div class="preview-row-copy"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(desc)}</span></div><span class="preview-row-pill">${escapeHtml(pill)}</span></div>`).join('');
 }
 function setupDesignInteractions(){
