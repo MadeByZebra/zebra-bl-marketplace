@@ -162,3 +162,12 @@ html.zebra-chat-scroll-locked .zebra-support-email { visibility:hidden; pointer-
   .zebra-inline-support-actions{flex:none;flex-wrap:wrap;}
   .zebra-inline-support-actions a{flex:1;white-space:nowrap;font-size:11px;}
 }
+
+
+/* Shared smooth in-page navigation on all seven Zebra Shop routes.
+   The custom wheel engine uses behavior:instant so it never double animates.
+   Opt out fully when visitors request reduced motion. */
+html { scroll-behavior:smooth; }
+@media (prefers-reduced-motion:reduce) {
+  html { scroll-behavior:auto!important; }
+}
