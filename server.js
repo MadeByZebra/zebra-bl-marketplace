@@ -18,6 +18,7 @@ import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxSc
 import { buyerLoadstring } from './github-loader.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
+import {validateSupportRequest,supportEmailContent} from './support-request.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -86,6 +87,7 @@ app.use('/api',(_,res,next)=>{res.set('Cache-Control','no-store');next();});
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false});
 const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
+const supportFormLimiter=rateLimit({windowMs:60*60*1000,limit:4,standardHeaders:'draft-7',legacyHeaders:false});
 const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
 const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(
@@ -244,6 +246,29 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
  }catch(e){console.error('Stripe webhook failure',e);res.sendStatus(500);}
 });
 app.use(express.json({limit:'20kb'}));app.use('/api',validateOrigin);
+// First-party customer contact form. The browser cannot choose the recipient,
+// and no mail app or paid support platform is required to submit a request.
+// Successful API acceptance means the mail provider accepted it, not guaranteed inbox delivery.
+app.post('/api/support/request',supportFormLimiter,async(req,res)=>{
+ const input=validateSupportRequest(req.body);
+ if(!input.ok)return res.status(400).json({ok:false,error:input.error});
+ if(input.discard)return res.status(202).json({ok:true,reference:'REQUEST-RECEIVED'});
+ const destination=String(process.env.SUPPORT_EMAIL||'').trim();
+ if(!emailValid(destination)||!activeMailer()||providerAuth==='unauthorized'||providerAuth==='forbidden')
+   return res.status(503).json({ok:false,error:'Email support is temporarily unavailable. Use the Gmail or email-app option below.'});
+ const reference='ZBS-'+randomBytes(6).toString('hex').toUpperCase();
+ const payload=supportEmailContent(input,reference);
+ try{
+  await sendShopEmail({to:destination,replyTo:input.email,
+    subject:payload.subject,text:payload.text,
+    idempotencyKey:'zebra-support-'+reference});
+  res.status(202).json({ok:true,reference});
+ }catch(err){
+  console.warn('Support email rejected',err?.code||'MAIL_PROVIDER_ERROR',Number(err?.status)||'');
+  res.status(503).json({ok:false,error:'Unable to submit right now. Please use Gmail or your email app instead.'});
+ }
+});
+
 app.get('/api/store',async(req,res)=>{
  try{
   const state=publicState();
