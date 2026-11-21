@@ -43,7 +43,7 @@
 .zebra-support-copy strong { font-size:11px; letter-spacing:.135em; font-weight:750; line-height:1.2; color:#fafafa; }
 .zebra-support-caption { font-size:10px; font-weight:550; line-height:1.2; letter-spacing:.08em; color:#aaa; }
 .zebra-support-light { width:6px; height:6px; margin-left:4px; border-radius:100%; flex:none; background:#e6e6e6; box-shadow:0 0 8px #aaa; }
-.zebra-support-trigger.is-open { border-color:#777; }
+.zebra-support-trigger.is-open { opacity:0; visibility:hidden; pointer-events:none; }
 @media (max-width: 640px) {
   .zebra-support-trigger { min-width:0; width:60px; height:60px; padding:10px; justify-content:center; right:12px; bottom: max(13px, env(safe-area-inset-bottom)); border-radius:18px; }
   .zebra-support-icon { flex: none; border:0; background:transparent; width:32px; height:32px; }
