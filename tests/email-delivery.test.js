@@ -94,3 +94,11 @@ test('Brevo 401 classifications do not expose provider error messages',async()=>
   assert.ok(!JSON.stringify(result).includes(message));
  }
 });
+
+test('sandbox purchase confirmation never pretends real payment was taken',()=>{
+ const m=receiptEmail({name:'BL Control Center',totalCents:1800,
+  orderId:'cs_test_example',storeUrl:'https://example.com',testMode:true});
+ assert.match(m,/NO REAL PAYMENT WAS MADE/);
+ assert.match(m,/Simulated amount: \$18\.00 USD/);
+ assert.doesNotMatch(m,/Paid: /);
+});
