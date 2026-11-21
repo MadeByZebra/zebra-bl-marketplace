@@ -55,3 +55,43 @@
 .help-empty{color:#aaa;display:none;padding:12px}
 @media(max-width:800px){.help-grid{grid-template-columns:1fr}.help-hero{padding-top:55px}.help-legal{padding-top:40px}}
 @media(max-width:520px){.help-wrap{width:min(100% - 28px,1120px)}.help-nav{padding:19px 0}.help-nav-links a{padding:8px 10px}.help-tile{padding:20px}.help-faq details{padding:0 14px}}
+
+
+/* First-party support form; actual email delivery, not a mailto dependency. */
+.zebra-contact-form-card{
+  margin-top:25px; padding:24px 25px;
+  border:1px solid #333; border-radius:15px;
+  background:linear-gradient(160deg,#101010,#070707);
+  color:#f6f6f6;
+}
+.zebra-contact-eyebrow{font:700 10px/1.5 Inter,system-ui,sans-serif;color:#a3a3a3;letter-spacing:.14em}
+.zebra-contact-form-card h3{font-size:clamp(19px,3vw,26px);margin:12px 0 8px;letter-spacing:-.04em;color:#fff}
+.zebra-contact-form-card>p{font-size:13px;line-height:1.65;margin:0 0 22px;color:#a9a9a9}
+#zebra-support-form{display:grid;gap:17px}
+#zebra-support-form label{display:flex;flex-direction:column;gap:8px;color:#d8d8d8;font-size:12px;font-weight:650;letter-spacing:.02em}
+#zebra-support-form label>span{color:#bdbdbd}
+#zebra-support-form input,#zebra-support-form select,#zebra-support-form textarea{
+ width:100%;padding:12px 13px;box-sizing:border-box;
+ border:1px solid #454545;border-radius:9px;background:#151515;color:#fff;
+ font:400 14px/1.5 Inter,system-ui,-apple-system,sans-serif;letter-spacing:0;
+ outline:none;box-shadow:none
+}
+#zebra-support-form input:focus-visible,#zebra-support-form select:focus-visible,#zebra-support-form textarea:focus-visible{
+ border-color:#eaeaea;outline:2px solid #777;outline-offset:1px
+}
+#zebra-support-form input::placeholder,#zebra-support-form textarea::placeholder{color:#868686}
+#zebra-support-form select option{background:#151515;color:#fff}
+#zebra-support-form textarea{resize:vertical;min-height:128px}
+.zebra-contact-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.zebra-contact-submit-row{display:flex;align-items:center;flex-wrap:wrap;gap:13px}
+.zebra-contact-submit-row button{cursor:pointer;min-height:44px}
+.zebra-contact-submit-row button:disabled{opacity:.6;cursor:wait}
+.zebra-contact-submit-row span{font-size:12px;color:#999}
+.zebra-contact-result{padding:14px;border:1px solid #4c4c4c;border-radius:10px;color:#ededed;font-size:13px;line-height:1.6}
+.zebra-contact-result.is-success{border-color:#6b6b6b;background:#1a1a1a}
+.zebra-contact-result.is-error{border-color:#9a5858;background:#211717}
+.zebra-contact-fallback{border-top:1px solid #333;margin-top:24px;padding-top:17px;color:#a2a2a2;font-size:12px;line-height:1.75}
+.zebra-contact-fallback a{color:#fff;text-decoration:underline;text-underline-offset:3px}
+.zebra-contact-spam{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}
+#contact:target,#zebra-support-form:target{scroll-margin-top:25px}
+@media(max-width:650px){.zebra-contact-form-card{padding:17px 14px}.zebra-contact-two{grid-template-columns:1fr;gap:15px}}
