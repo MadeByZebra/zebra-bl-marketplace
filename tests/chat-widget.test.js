@@ -63,3 +63,32 @@ test('support center offers Gmail compose as an alternative to default mail apps
   assert.ok(html.includes('mail.google.com/mail/?view=cm'));
   assert.ok(html.includes('to=zebrablshopofficial%40gmail.com'));
 });
+
+
+test('all customer-facing support mail links receive the shared prefilled draft',()=>{
+  assert.match(loader,/const supportEmailSelector\s*=/);
+  assert.match(loader,/function updateEmailSupportLinks\(root\)/);
+  assert.match(loader,/document\.addEventListener\('click'/);
+  assert.match(loader,/updateEmailSupportLinks\(document\)/);
+  for(const path of [
+    '../public/index.html','../public/scripts/index.html',
+    '../public/account/index.html','../public/zflag/index.html'
+  ]){
+    const html=readFileSync(new URL(path,import.meta.url),'utf8');
+    assert.match(html,/class="zebra-inline-support-cta"/);
+    assert.match(html,/class="zebra-footer-email-link"/);
+    assert.match(html,/data-zebra-email-support/);
+    assert.match(html,/href="\/support\/"/);
+  }
+});
+test('support contact is actionable in product policy, FAQs and refund terms',()=>{
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  const support=readFileSync(new URL('../public/support/index.html',import.meta.url),'utf8');
+  const terms=readFileSync(new URL('../public/terms/index.html',import.meta.url),'utf8');
+  assert.match(app,/data-zebra-email-support/);
+  assert.match(app,/href="\/support\/"/);
+  assert.match(support,/email <a data-zebra-email-support/);
+  assert.match(terms,/email Zebra Support/);
+  const css=readFileSync(new URL('../public/zebra-chat.css',import.meta.url),'utf8');
+  assert.match(css,/\.zebra-inline-support-cta/);
+});
