@@ -165,6 +165,13 @@ async function startup(){try{const saved=localStorage.getItem('bl-theme');if(sav
   $('#paymentStatus').textContent=store.checkout_ready?(store.mode==='test'?'STRIPE TEST CHECKOUT READY':'STRIPE CHECKOUT READY'):'CHECKOUT SETUP PENDING';
   if(store.test_checkout_ready){const btn=document.querySelector('#testCheckoutBtn');if(btn)btn.hidden=false;}if(!store.checkout_ready)toast('Store preview is live. Payments are disabled until configured.');
   await refreshOwned();const url=new URL(window.location.href);
+  // ZFLAG's standalone site can link directly to its protected product panel.
+  const linkedProduct=url.searchParams.get('product');
+  if(linkedProduct && /^[a-z0-9-]{2,60}$/.test(linkedProduct) && findItem(linkedProduct)){
+    viewProduct(linkedProduct);
+    url.searchParams.delete('product');
+    history.replaceState({},'',url.pathname+(url.search||'')+url.hash);
+  }
   if(url.searchParams.get('checkout')==='success'&&url.searchParams.get('session_id')){
    if(state.user){try{const r=await api('/api/confirm',{method:'POST',body:JSON.stringify({session_id:url.searchParams.get('session_id')})});toast(r.paid?'Payment verified. Access is in My Library.':'Payment is pending verification. Check your library shortly.');if(r.paid)openLibrary();}catch(e){toast(e.message);}}
    else toast('Sign in to the account used at checkout to access your purchase.');
