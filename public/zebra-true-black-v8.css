@@ -272,3 +272,28 @@ html[data-theme=light] .zebra-v8 .studio-statusbar{background:#efefed;color:#777
  .zebra-v8 .studio-statusbar{font-size:7px}
  .zebra-v8 .hero.container>.product-stage{margin-top:35px!important}
 }
+
+/* BL Scripts navigation matches the genuine ZFLAG floating header */
+.zebra-v8 .site-header{top:16px!important;transition:top .32s var(--ease)!important}
+.zebra-v8 .header-inner{height:64px!important;min-height:64px!important;border-radius:15px!important;background:var(--glass)!important;border:1px solid var(--line)!important;box-shadow:0 12px 32px #0009,inset 0 1px #ffffff0c!important}
+.zebra-v8 .nav-links a{border-radius:8px!important;color:var(--muted)!important;font-weight:550!important}
+.zebra-v8 .nav-links a:hover,.zebra-v8 .nav-links a.is-active{background:var(--raised)!important;color:var(--text)!important}
+.zebra-v8 .site-header .brand-text{font-weight:650!important;font-size:14px!important;letter-spacing:.045em!important;color:var(--text)}
+.zebra-v8 .icon-button,.zebra-v8 .nav-library,.zebra-v8 .account-btn{height:42px!important;border-radius:9px!important}
+.zebra-v8 .nav-library{border:1px solid var(--line2)!important;background:var(--panel)!important}
+.zebra-v8 .account-btn{background:var(--text)!important;border:1px solid var(--text)!important;color:var(--bg)!important}
+.zebra-v8 .mobile-nav{background:var(--panel)!important;border:1px solid var(--line2)!important;border-radius:12px!important}
+.zebra-v8 .nav-shell .nav-links a{white-space:nowrap}
+@media(max-width:900px){.zebra-v8 .site-header .header-inner{width:calc(100% - 32px)!important}}
+@media(max-width:670px){
+ .zebra-v8 .site-header{top:10px!important}
+ .zebra-v8 .site-header .header-inner{height:56px!important;min-height:56px!important}
+ .zebra-v8 .site-header #libraryBtn{display:none!important}
+ .zebra-v8 .site-header .brand-text{font-size:12px!important}
+ .zebra-v8 .site-header #accountBtn{padding:0 9px!important;font-size:11px}
+ .zebra-v8 .nav-actions{gap:5px!important}
+ .zebra-v8 .nav .nav-actions>.btn:not(.primary){display:none!important}
+ .zebra-v8 .nav .nav-actions>.btn.primary{height:38px!important;min-height:38px!important;padding:0 10px!important;font-size:10px!important}
+ .zebra-v8 .nav .brand{letter-spacing:0!important;font-size:12px!important}
+ .zebra-v8 .site-header #themeBtn{width:34px!important;height:34px!important}
+}
