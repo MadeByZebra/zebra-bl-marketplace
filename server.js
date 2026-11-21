@@ -17,6 +17,7 @@ import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
+import {normalizeTicket,isSupportAdmin,makeTicketId,normalizeSupportReply} from './support-tickets.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
@@ -52,7 +53,9 @@ const schema=[
  `CREATE TABLE IF NOT EXISTS licenses (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, created_at BIGINT NOT NULL, revoked_at BIGINT, last_used_at BIGINT)`,
  `CREATE UNIQUE INDEX IF NOT EXISTS licenses_one_active_per_product ON licenses (user_id,sku) WHERE revoked_at IS NULL`,
  `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS free_promo_redemptions (user_id TEXT PRIMARY KEY REFERENCES users(id), sku TEXT NOT NULL, session_id TEXT UNIQUE NOT NULL, created_at BIGINT NOT NULL, redeemed_at BIGINT)`
+ `CREATE TABLE IF NOT EXISTS free_promo_redemptions (user_id TEXT PRIMARY KEY REFERENCES users(id), sku TEXT NOT NULL, session_id TEXT UNIQUE NOT NULL, created_at BIGINT NOT NULL, redeemed_at BIGINT)`,
+ `CREATE TABLE IF NOT EXISTS support_tickets (id TEXT PRIMARY KEY, email TEXT NOT NULL, subject TEXT NOT NULL, message TEXT NOT NULL, created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL, status TEXT NOT NULL DEFAULT 'open')`,
+ `CREATE TABLE IF NOT EXISTS support_replies (id TEXT PRIMARY KEY, ticket_id TEXT NOT NULL REFERENCES support_tickets(id), message TEXT NOT NULL, sent_at BIGINT NOT NULL)`
 ];
 async function query(sql,values=[]){
  if(pool){const r=await pool.query(sql,values);return r.rows;}
@@ -86,6 +89,9 @@ app.use('/api',(_,res,next)=>{res.set('Cache-Control','no-store');next();});
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false});
 const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
+// Rate limit new public support messages to protect the free email allowance.
+const supportTicketLimiter=rateLimit({windowMs:60*60*1000,limit:3,standardHeaders:'draft-7',legacyHeaders:false});
+const supportReplyLimiter=rateLimit({windowMs:15*60*1000,limit:15,standardHeaders:'draft-7',legacyHeaders:false});
 const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
 const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(
@@ -258,6 +264,79 @@ app.get('/api/store',async(req,res)=>{
   res.json(state);
  }catch(e){safeError(res,e);}
 });
+// Free first-party support tickets. The client cannot choose the email recipient.
+// Requests remain in Postgres even if the provider rejects mail.
+app.post('/api/support/tickets',supportTicketLimiter,async(req,res)=>{
+ const ticket=normalizeTicket(req.body);
+ if(!ticket.ok)return res.status(400).json({error:ticket.error});
+ if(!usingPostgres)return res.status(503).json({error:'Support requests are temporarily unavailable. Please email the shop directly.'});
+ const id=makeTicketId(),time=now();
+ try{
+  await query('INSERT INTO support_tickets (id,email,subject,message,created_at,updated_at,status) VALUES ($1,$2,$3,$4,$5,$6,$7)',[
+   id,ticket.email,ticket.subject,ticket.message,time,time,'open']);
+  let notification='pending';
+  const destination=String(process.env.SUPPORT_EMAIL||'').trim();
+  if(emailValid(destination)&&activeMailer()){
+   try{
+    await sendShopEmail({
+     to:destination,subject:'Zebra Support request '+id,
+     text:[
+      "New Zebra's Shop support request",
+      'Ticket: '+id,
+      'Topic: '+ticket.subject,
+      'Reply-to customer: '+ticket.email,
+      'Submitted: '+new Date(time).toISOString(),
+      '',ticket.message,'',
+      'Open the private support inbox to reply; do not ask for card details or one-time codes.',
+      SITE.origin+'/support/inbox/'
+     ].join('\n')
+    });
+    notification='sent';
+   }catch(e){
+    console.warn('Support notification queued in inbox',e.code||'EMAIL_SEND_FAILED',e.status||'');
+   }
+  }
+  res.status(201).json({ok:true,ticket:id,notification,help_url:'/support/'});
+ }catch(e){safeError(res,e);}
+});
+// Admin access requires an authenticated email-code session and a private allowlist.
+app.get('/api/support/admin/tickets',requireUser,async(req,res)=>{
+ if(!isSupportAdmin(req.user.email))return res.sendStatus(403);
+ try{
+  const tickets=await query('SELECT id,email,subject,message,status,created_at,updated_at FROM support_tickets ORDER BY created_at DESC LIMIT 100');
+  res.json({tickets});
+ }catch(e){safeError(res,e);}
+});
+app.get('/api/support/admin/replies/:ticket',requireUser,async(req,res)=>{
+ if(!isSupportAdmin(req.user.email))return res.sendStatus(403);
+ const id=String(req.params.ticket||'').toUpperCase();
+ if(!/^ZB-[A-F0-9]{16}$/.test(id))return res.sendStatus(400);
+ try{
+  const replies=await query('SELECT message,sent_at FROM support_replies WHERE ticket_id=$1 ORDER BY sent_at ASC',[id]);
+  res.json({replies});
+ }catch(e){safeError(res,e);}
+});
+app.post('/api/support/admin/reply',supportReplyLimiter,requireUser,async(req,res)=>{
+ if(!isSupportAdmin(req.user.email))return res.sendStatus(403);
+ const reply=normalizeSupportReply(req.body);
+ if(!reply.ok)return res.status(400).json({error:reply.error});
+ if(!activeMailer())return res.status(503).json({error:'Support email is not configured.'});
+ try{
+  const ticket=(await query('SELECT id,email,subject,status FROM support_tickets WHERE id=$1',[reply.ticket]))[0];
+  if(!ticket)return res.sendStatus(404);
+  if(ticket.status==='closed')return res.status(409).json({error:'Ticket is closed.'});
+  await sendShopEmail({
+   to:ticket.email,subject:'Re: Zebra Support '+ticket.id+' — '+ticket.subject,
+   text:"Zebra's Shop Customer Support\nTicket: "+ticket.id+'\n\n'+reply.message+
+    '\n\nFor follow-up, reply to zebrablshopofficial@gmail.com. Do not send card numbers or login codes.'
+  });
+  const time=now();
+  await query('INSERT INTO support_replies (id,ticket_id,message,sent_at) VALUES ($1,$2,$3,$4)',[randomUUID(),ticket.id,reply.message,time]);
+  await query('UPDATE support_tickets SET status=$1,updated_at=$2 WHERE id=$3',['replied',time,ticket.id]);
+  res.json({ok:true});
+ }catch(e){console.warn('Support reply failed',e.code||'SUPPORT_REPLY_FAILED',e.status||'');res.status(503).json({error:'Could not send the reply. Check the email provider before retrying.'});}
+});
+
 // Public price preview only. Stripe always receives the server-validated amount.
 const quoteLimiter=rateLimit({windowMs:15*60*1000,limit:80,standardHeaders:'draft-7',legacyHeaders:false});
 app.get('/api/discount/quote',quoteLimiter,(req,res)=>{
