@@ -48,12 +48,14 @@ test('the same support button provides separate free email support',()=>{
 
 
 
-test('email support composes a prefilled message through the visitor mail app',()=>{
+test('email support opens the on-site form while preserving an explicit mail-app fallback',()=>{
   assert.ok(loader.includes("const supportEmail = 'zebrablshopofficial@gmail.com'"));
   assert.ok(loader.includes("const supportComposeLink = 'mailto:' + supportEmail"));
   assert.ok(loader.includes('encodeURIComponent(supportSubject)'));
   assert.ok(loader.includes('encodeURIComponent(supportBody)'));
-  assert.ok(loader.includes('emailLink.href = supportComposeLink'));
+  assert.ok(loader.includes('emailLink.href = supportFormLink'));
+  assert.ok(loader.includes("const supportFormLink = '/support/#contact'"));
+  assert.ok(loader.includes("link.hasAttribute('data-zebra-email-client')"));
   assert.ok(loader.includes('String.fromCharCode(13, 10)'));
 });
 test('support center offers Gmail compose as an alternative to default mail apps',()=>{
@@ -68,6 +70,7 @@ test('support center offers Gmail compose as an alternative to default mail apps
 test('all customer-facing support mail links receive the shared prefilled draft',()=>{
   assert.match(loader,/const supportEmailSelector\s*=/);
   assert.match(loader,/function updateEmailSupportLinks\(root\)/);
+  assert.match(loader,/link\.href = supportFormLink/);
   assert.match(loader,/document\.addEventListener\('click'/);
   assert.match(loader,/updateEmailSupportLinks\(document\)/);
   for(const path of [
