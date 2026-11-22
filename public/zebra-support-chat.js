@@ -2,6 +2,11 @@
 (()=>{
   'use strict';
   if(document.getElementById('zebra-chat-launcher'))return;
+  // Stripe returns to /account with a verification code. Don't mount any
+  // floating support UI while purchases and receipts are being confirmed.
+  const checkoutReturn=/^\/account(?:\/|$)/.test(location.pathname)
+    &&/^(success|cancel)$/.test(new URLSearchParams(location.search).get('checkout')||'');
+  if(checkoutReturn)document.documentElement.classList.add('zebra-payment-return');
   const STORE_KEY='zebra_shop_support_chat_v1';
   const supportUrl='/support/#contact';
   let session=null,opened=false,busy=false,tick=null,seenCount=0;
@@ -123,10 +128,10 @@
     tick=setInterval(()=>{if(opened&&session&&!busy)load();},5000);
     input.focus();
   }
-  function hide(){
+  function hide(restoreFocus=true){
     opened=false;panel.hidden=true;launcher.setAttribute('aria-expanded','false');
     document.documentElement.classList.remove('zebra-chat-scroll-locked');
-    if(tick)clearInterval(tick);tick=null;launcher.focus();
+    if(tick)clearInterval(tick);tick=null;if(restoreFocus)launcher.focus();
   }
   launcher.addEventListener('click',()=>opened?hide():open());
   close.addEventListener('click',hide);
@@ -167,7 +172,16 @@
     const a=event.target instanceof Element?event.target.closest('a[data-zebra-email-support],a[href^="mailto:zebrablshopofficial@gmail.com" i]'):null;
     if(a&&!a.hasAttribute('data-zebra-email-client'))a.href=supportUrl;
   },true);
-  function mount(){document.body.append(launcher,emailLink,panel);}
+  function mount(){
+    if(checkoutReturn)return;
+    document.body.append(launcher,emailLink,panel);
+    // Product/payment dialogs are top-level interactive controls. Suspend an
+    // already-open support panel so it cannot lock scrolling or steal focus.
+    const observer=new MutationObserver(()=>{
+      if(opened&&document.querySelector('dialog[open]'))hide(false);
+    });
+    observer.observe(document.body,{subtree:true,attributes:true,attributeFilter:['open']});
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});
   else mount();
   window.addEventListener('pagehide',()=>{if(tick)clearInterval(tick);});
