@@ -28,6 +28,10 @@ test('checkout and order pages use existing true-black branding with original sc
  assert.match(order,/id="orderDetailsCard" hidden/);
  assert.match(order,/id="receiptLink"/);
  assert.match(order,/id="reviewForm"/);
+ assert.match(order,/id="paymentStep"/);
+ assert.match(order,/id="deliveryStep"/);
+ assert.doesNotMatch(order,/class="completed"><i>✓<\/i> Confirm &amp; pay/);
+ assert.match(order,/id="copyAllLoadstrings"/);
  assert.match(css,/grid-template-columns:minmax/);
  assert.match(css,/@media\(max-width:620px\)/);
 });
@@ -50,6 +54,8 @@ test('receipt only displays deliverables after signed-in server verification',()
  assert.match(orderJs,/api\('\/api\/order\//);
  assert.match(orderJs,/if\(!confirmed\.paid\|\|order\.status!=='paid'\)/);
  assert.match(orderJs,/renderDelivered\(order\)/);
+ assert.match(orderJs,/\$\('paymentStep'\)\.classList\.add\('completed'\)/);
+ assert.match(orderJs,/\$\('copyAllLoadstrings'\)\.addEventListener/);
  assert.match(orderJs,/api\('\/api\/license\//);
  assert.match(orderJs,/Generate personal loadstring/);
  assert.match(orderJs,/Download \.txt/);
