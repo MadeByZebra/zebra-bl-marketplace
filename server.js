@@ -21,6 +21,7 @@ import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.j
 import {verifiedLiveProduct,liveReleaseReadiness} from './live-sales-release-gates.js';
 import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.js';
 import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
+import {reconcilePendingPurchases} from './purchase-reconciliation.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
 import {requiresSameOrigin,validLicenseKey,licenseRateLimitKey} from './loader-security.mjs';
@@ -311,6 +312,25 @@ async function retryUnsentConfirmations(){
    report:(message,code)=>console.warn(message,code)});
  }catch(error){console.warn('Pending purchase email retry unavailable',error?.code||'unknown');}
  finally{purchaseEmailRetryActive=false;}
+}
+
+// A signed webhook can be missed during an outage or a canceled browser redirect.
+// Recheck only our own recent pending order references via Stripe, then use
+// grantFromStripe's full payment, ownership and amount verification before
+// activating an entitlement or sending a purchase confirmation.
+let pendingReconcileActive=false;
+async function reconcilePendingOrders(){
+ if(pendingReconcileActive||!stripe||stripeAuth!=='authorized'||!usingPostgres)return;
+ const prefix=checkoutOrderPrefix(process.env.STRIPE_SECRET_KEY);
+ if(!prefix)return;
+ pendingReconcileActive=true;
+ try{
+  await reconcilePendingPurchases({query,prefix,limit:10,
+   fetchSession:id=>stripe.checkout.sessions.retrieve(id),
+   confirmPaid:grantFromStripe,notify:sendPurchaseConfirmation,
+   report:(message,code)=>console.warn(message,code)});
+ }catch(error){console.warn('Pending Stripe order recovery unavailable',error?.code||'unknown');}
+ finally{pendingReconcileActive=false;}
 }
 
 // Registered BEFORE JSON parser: Stripe signatures require the untouched raw body.
@@ -638,6 +658,8 @@ init().then(async()=>{
   // is never prevented by a background email-retry task.
   const initial=setTimeout(()=>{void retryUnsentConfirmations();},30000);initial.unref?.();
   const periodic=setInterval(()=>{void retryUnsentConfirmations();},5*60*1000);periodic.unref?.();
+  const reconciliationStart=setTimeout(()=>{void reconcilePendingOrders();},45000);reconciliationStart.unref?.();
+  const reconciliationLoop=setInterval(()=>{void reconcilePendingOrders();},3*60*1000);reconciliationLoop.unref?.();
  });
 }).catch(e=>{console.error('Database initialization failed',e);process.exit(1);});
 export {app,checkoutReady,grantFromStripe};
