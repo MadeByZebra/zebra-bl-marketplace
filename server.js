@@ -18,7 +18,7 @@ import { validFreeCheckout } from './free-checkout.js';
 import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
-import {requiresSameOrigin,loaderRateLimitKey} from './loader-security.mjs';
+import {requiresSameOrigin,validLicenseKey,licenseRateLimitKey} from './loader-security.mjs';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
 import {validateSupportRequest,supportEmailContent} from './support-request.js';
@@ -503,8 +503,11 @@ app.get('/api/receipt/:sessionId',requireUser,async(req,res)=>{
 });
 // Every paid item receives one active secret. The public launcher and source are different assets.
 const licenseLimiter=rateLimit({windowMs:15*60*1000,limit:15,standardHeaders:'draft-7',legacyHeaders:false});
-const loaderLimiter=rateLimit({windowMs:60*1000,limit:50,standardHeaders:'draft-7',legacyHeaders:false,
- keyGenerator:req=>loaderRateLimitKey(req.query?.key,req.ip)});
+const loaderLimiter=rateLimit({windowMs:60*1000,limit:50,standardHeaders:'draft-7',legacyHeaders:false});
+const licenseLoaderLimiter=rateLimit({windowMs:60*1000,limit:50,standardHeaders:false,legacyHeaders:false,
+ skip:req=>!validLicenseKey(req.query?.key),
+ keyGenerator:req=>licenseRateLimitKey(req.query.key)});
+
 async function entitlementIsPaid(userId,sku){
  // Test cards must never unlock real protected software for public visitors.
  if(testMode()){
@@ -533,7 +536,7 @@ app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
  }catch(e){safeError(res,e);}
 });
 // Runtime licenses do not use browser cookies. Every delivery verifies the paid account.
-app.get('/api/loader/:sku',loaderLimiter,async(req,res)=>{
+app.get('/api/loader/:sku',loaderLimiter,licenseLoaderLimiter,async(req,res)=>{
  const sku=String(req.params.sku),key=String(req.query.key||'');
  if(!products.some(p=>p.id===sku&&!p.unavailable)||payloadReadiness.products[sku]!=='verified'||!/^ZBL_[a-f0-9]{56}$/.test(key))return res.sendStatus(403);
  try{
