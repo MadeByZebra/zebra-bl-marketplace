@@ -270,3 +270,55 @@ html { scroll-behavior:smooth; }
  .zebra-owned-link{padding:8px 6px;font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){.zebra-owned-chat,.zebra-owned-chat *{scroll-behavior:auto!important;transition:none!important}}
+
+
+/* Checkout/accessibility safeguard: never cover purchase dialogs, account
+   sign-in, payment-return verification or private library controls. */
+body:has(dialog[open]) .zebra-support-trigger,
+body:has(dialog[open]) .zebra-support-email,
+body:has(dialog[open]) .zebra-owned-chat,
+body:has(#verifyForm:not([hidden])) .zebra-support-trigger,
+body:has(#verifyForm:not([hidden])) .zebra-support-email,
+body:has(#verifyForm:not([hidden])) .zebra-owned-chat,
+body:has(#emailForm:not([hidden])) .zebra-support-trigger,
+body:has(#emailForm:not([hidden])) .zebra-support-email,
+body:has(#emailForm:not([hidden])) .zebra-owned-chat {
+  display: none !important;
+}
+/* The account checkout-return flow is intentionally chat-free until payment
+   verification has completed. This class is set before widget mounting. */
+html.zebra-payment-return .zebra-support-trigger,
+html.zebra-payment-return .zebra-support-email,
+html.zebra-payment-return .zebra-owned-chat {
+  display: none !important;
+}
+/* Small launchers don't obstruct the purchase CTA on narrow screens or
+   desktop. Both chat and email remain available when no modal is open. */
+.zebra-support-trigger {
+  min-width: 56px;
+  width: 58px;
+  min-height: 58px;
+  height: 58px;
+  border-radius: 16px;
+  padding: 9px;
+  justify-content: center;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(15px, env(safe-area-inset-bottom));
+}
+.zebra-support-copy,
+.zebra-support-light {display:none;}
+.zebra-support-icon {border:0;background:transparent;width:38px;height:38px;flex-basis:38px;}
+.zebra-support-email {
+  right: calc(max(14px, env(safe-area-inset-right)) + 68px);
+  bottom: max(17px, env(safe-area-inset-bottom));
+  width:54px;
+  min-height:54px;
+  padding:0;
+}
+.zebra-support-email span:not(.zebra-mail-symbol) {display:none;}
+.zebra-support-email .zebra-mail-symbol{display:inline;font-size:22px;}
+@media(max-width:640px){
+  .zebra-support-trigger{right:12px;bottom:max(13px,env(safe-area-inset-bottom));width:56px;height:56px;}
+  .zebra-support-email{right:78px;bottom:max(14px,env(safe-area-inset-bottom));width:54px;min-height:54px;}
+  .zebra-support-email .zebra-mail-symbol{display:inline;font-size:22px;}
+}
