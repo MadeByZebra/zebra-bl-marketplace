@@ -328,3 +328,7 @@ html[data-theme=light] .zebra-v8 .studio-statusbar{background:#efefed;color:#777
  .zebra-v8 .product-dialog>.dialog-x{right:12px!important;top:12px!important}
  .zebra-v8 .product-dialog .dialog-product-top{padding-right:45px!important}
 }
+
+/* Show the checkout availability banner only when the backend reports a hold. */
+.zebra-v8 #checkoutNotice[hidden]{display:none!important}
+.zebra-v8 #checkoutNotice:not([hidden]){display:flex;gap:16px;align-items:center;margin:0 0 22px}
