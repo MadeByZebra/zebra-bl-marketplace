@@ -42,6 +42,7 @@ jobs:
           assert.equal(h.verified_script_count,6,'Six protected Lua artifacts must decrypt and hash-match');
           assert.equal(h.vault_ready,true,'Protected assets not verified');
           assert.equal(h.zflag_installer_ready,false,'No paid ZFLAG build was approved');
+          assert.equal(h.sandbox_script_delivery_enabled,true,'Owner-only script QA is not enabled yet');
 
           const publicStore=await request('/api/store');
           assert.equal(publicStore.code,200);
