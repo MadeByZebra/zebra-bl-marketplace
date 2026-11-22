@@ -39,8 +39,8 @@ export async function runUnpaidLiveCheckoutPreflight({
     unit_amount:priceCents,
     product_data:{name:'BL Scripts internal prelaunch checkout diagnostic — not a sale'}
    },quantity:1}],
-   success_url:String(siteUrl).replace(/\\/$/,'')+'/account/?preflight=complete',
-   cancel_url:String(siteUrl).replace(/\\/$/,'')+'/account/?preflight=cancelled',
+   success_url:String(siteUrl).replace(/\/$/,'')+'/account/?preflight=complete',
+   cancel_url:String(siteUrl).replace(/\/$/,'')+'/account/?preflight=cancelled',
    expires_at:Math.floor(now()/1000)+1800,
    metadata:{internal_preflight:'1'}
   });
@@ -57,7 +57,7 @@ export async function runUnpaidLiveCheckoutPreflight({
    }catch(e){status.issues.push('checkout_expire:'+clean(e));}
   }
  }
- if(typeof sendMail==='function'&&/^[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+$/.test(String(supportEmail||''))){
+ if(typeof sendMail==='function'&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(supportEmail||''))){
   try{
    const r=await sendMail({
     to:supportEmail,subject:'BL Scripts — launch email diagnostic (NO PURCHASE)',
