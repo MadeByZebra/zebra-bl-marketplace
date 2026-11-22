@@ -582,6 +582,7 @@ app.get('/api/health',(_req,res)=>{
  const vaultReady=payloadReadiness.ready;
  res.json({
   ok:true,service:'zebra-store',checkout:checkoutReady()?'configured':'disabled',
+  deployed_git_commit:/^[a-f0-9]{40}$/.test(process.env.RENDER_GIT_COMMIT||'')?process.env.RENDER_GIT_COMMIT:null,
   mode:testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unconfigured',
   email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
   stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:/^whsec_/.test(webSecret||''),
