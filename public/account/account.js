@@ -11,6 +11,7 @@
     const response=await fetch(url,{
       credentials:'same-origin',
       headers:{'Content-Type':'application/json'},
+      cache:'no-store',
       ...options
     });
     let result={};
@@ -50,111 +51,136 @@
     $('emailForm').hidden=false;
     $('verifyForm').hidden=true;
     $('panelTitle').textContent='Sign in by email.';
+    $('authHint').textContent='We’ll send a six-digit, single-use code. No password required.';
     $('loginCode').value='';
   }
   function renderLibrary(owned,catalog,orders=[]){
     const container=$('libraryItems');
     container.replaceChildren();
-    const licensedItems=(owned||[]).filter(sku=>{
+    $('loaderResult').replaceChildren(); // Never keep a private loader from a previous account.
+    const licensedItems=[...new Set((owned||[]))].filter(sku=>{
       const product=catalogItem(catalog,sku);
       return product&&!product.testOnly;
     });
+    const header=(title,count)=>{
+      const section=element('section',undefined,'commerce-library-group');
+      const heading=element('div',undefined,'commerce-library-group-head');
+      heading.append(element('h3',title),element('span',String(count)+' '+(count===1?'ITEM':'ITEMS'),'commerce-library-count'));
+      section.append(heading);
+      container.append(section);
+      return section;
+    };
+    const productsSection=header('Your products',licensedItems.length);
     if(!licensedItems.length){
-      const sandboxOrder=(orders||[]).some(order=>catalogItem(catalog,order.sku)?.testOnly);
-      container.append(element('p',sandboxOrder
-        ? 'Sandbox payment verified. No software license is included with this diagnostic purchase.'
-        : 'No purchases yet. Your verified products will appear here.','account-status'));
+      productsSection.append(element('p',(orders||[]).some(o=>catalogItem(catalog,o.sku)?.testOnly)
+        ?'Diagnostic checkout completed. No software license is attached to that test order.'
+        :'No purchased products yet. Your verified tools will appear here after payment confirmation.','account-status'));
+      const browse=link('/scripts/','Browse tools ↗');
+      browse.className='btn';
+      productsSection.append(browse);
     }
     for(const sku of licensedItems){
       const product=catalogItem(catalog,sku);
-      if(!product)continue;
-      const row=element('div',undefined,'library-item');
+      const row=element('article',undefined,'library-item');
       const info=element('div');
-      info.append(element('strong',product.title),element('span',product.kind==='download'?'Protected installer':'Licensed loadstring'));
-      row.append(info);
+      info.append(element('strong',product.title),element('span',product.kind==='download'?'Protected Windows installer · verified order only':'Private licensed loadstring · account protected'));
+      const controls=element('div',undefined,'commerce-library-actions');
       if(product.kind==='download'){
-        row.append(link('/api/injector/download','Download installer ↗'));
+        controls.append(link('/api/injector/download','Download installer ↗'));
       }else{
-        const generate=element('button','Generate loader ↗','btn');
+        const generate=element('button','Generate loadstring ↗','btn');
         generate.type='button';
+        const result=element('section',undefined,'commerce-loader-card');
+        result.hidden=true;
+        const label=element('strong','PERSONAL LOADSTRING — KEEP PRIVATE');
+        label.className='commerce-eyebrow';
+        const explanation=element('p','Creating another key disables the previous one. Do not send your personal loadstring to others.','commerce-muted');
+        const area=element('textarea');
+        area.readOnly=true;area.spellcheck=false;
+        area.setAttribute('aria-label',product.title+' private loadstring');
+        const actions=element('div',undefined,'commerce-actions');
+        const copy=element('button','Copy loadstring','btn'),download=element('button','Download .txt','btn');
+        copy.type='button';download.type='button';
+        const feedback=element('p',undefined,'account-alert');
+        actions.append(copy,download);
+        result.append(label,explanation,area,actions,feedback);
         generate.addEventListener('click',async()=>{
+          if(!window.confirm('Generate a new personal loadstring for '+product.title+'? Any previously issued key for this product will stop working.'))return;
           generate.disabled=true;
-          alert('Generating your personal license…');
+          feedback.textContent='Verifying your purchase and rotating your private license…';
+          feedback.classList.remove('error');
           try{
             const data=await api('/api/license/'+encodeURIComponent(sku),{method:'POST',body:'{}'});
-            const destination=$('loaderResult');
-            destination.replaceChildren();
-            const code=element('pre',data.loadstring,'loader-output');
-            const copy=element('button','Copy loadstring','btn');
-            copy.type='button';
-            copy.addEventListener('click',async()=>{
-              try{
-                await navigator.clipboard.writeText(data.loadstring);
-                alert('Copied. Keep your personal license private.');
-              }catch(_error){alert('Clipboard access denied. Copy the text manually.',true);}
-            });
-            destination.append(code,copy);
-            alert('New personal loader generated. The old key for this product is revoked.');
-          }catch(error){alert(error.message,true);}
-          finally{generate.disabled=false;}
+            if(typeof data.loadstring!=='string'||!data.loadstring.includes('ZebraLicense'))throw new Error('The server did not return a valid personal loader.');
+            area.value=data.loadstring;
+            result.hidden=false;
+            generate.textContent='Rotate license ↗';
+            feedback.textContent='Personal loadstring ready. Your previous key was revoked.';
+            alert('Personal loader created for '+product.title+'. Keep it private.');
+          }catch(error){
+            feedback.classList.add('error');feedback.textContent=error.message;
+            alert(error.message,true);
+          }finally{generate.disabled=false;}
         });
-        row.append(generate);
+        copy.addEventListener('click',async()=>{
+          if(!area.value)return;
+          try{
+            if(!navigator.clipboard?.writeText)throw new Error('Clipboard not available');
+            await navigator.clipboard.writeText(area.value);
+            feedback.classList.remove('error');feedback.textContent='Copied. Keep the license private.';
+          }catch{
+            area.focus();area.select();
+            feedback.classList.remove('error');feedback.textContent='Select the highlighted text and copy manually.';
+          }
+        });
+        download.addEventListener('click',()=>{
+          if(!area.value)return;
+          const blob=new Blob([area.value+'\\n'],{type:'text/plain;charset=utf-8'});
+          const url=URL.createObjectURL(blob);
+          try{
+            const a=element('a');a.href=url;a.download='ZBL_'+sku+'_personal_loadstring.txt';
+            document.body.append(a);a.click();a.remove();
+            feedback.textContent='Saved to your computer. Keep this file private.';
+          }finally{setTimeout(()=>URL.revokeObjectURL(url),1000);}
+        });
+        controls.append(generate);
+        row.append(result);
       }
-      container.append(row);
+      row.prepend(info);
+      row.insertBefore(controls,row.children.length&&row.lastElementChild?.classList.contains('commerce-loader-card')?row.lastElementChild:null);
+      productsSection.append(row);
     }
-    if(!orders.length)return;
-    const heading=element('h3','Order history & receipts');
-    heading.style.cssText='font-size:18px;letter-spacing:-.04em;margin:35px 0 8px';
-    container.append(heading);
+    const history=header('Order history',orders.length);
+    if(!orders.length){
+      history.append(element('p','No verified orders on this account yet.','account-status'));
+    }
     for(const order of orders){
       const product=catalogItem(catalog,order.sku);
-      if(!product)continue;
-      const row=element('div',undefined,'library-item');
+      const row=element('article',undefined,'library-item');
       const info=element('div');
-      const orderNote=product.testOnly?' · STRIPE SANDBOX TEST · No real charge':
-        Number(order.amount)===0?' · Free promotional order':' · Paid';
-      info.append(
-        element('strong',product.title),
-        element('span',dateLabel(order.paid_at)+' · '+priceLabel(order.amount)+orderNote)
-      );
-      row.append(info);
-      if(product.testOnly){
-        row.append(element('span','TEST PASSED','account-status'));
-        if(typeof order.session_id==='string'&&/^cs_test_[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
-          const emailButton=element('button','Verify / email test confirmation','btn');
-          emailButton.type='button';
-          emailButton.addEventListener('click',async()=>{
-            emailButton.disabled=true;
-            alert('Checking this payment with Stripe…');
-            try{
-              const data=await api('/api/confirm',{method:'POST',
-                body:JSON.stringify({session_id:order.session_id})});
-              alert(data.paid
-                ? 'Test payment verified. If a confirmation was not already sent, email delivery was attempted.'
-                : 'Payment has not been verified; no confirmation was sent.',!data.paid);
-            }catch(error){alert(error.message,true);}
-            finally{emailButton.disabled=false;}
-          });
-          row.append(emailButton);
-        }
-      }else if(Number(order.amount)>0&&typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
-        const receipt=link('/api/receipt/'+encodeURIComponent(order.session_id),'Stripe receipt ↗');
-        receipt.target='_blank';
-        receipt.rel='noopener noreferrer';
-        row.append(receipt);
-      }
+      const title=product?.title||'Purchased product';
+      const summary=Number(order.amount)===0?' · Promotional order':product?.testOnly?' · Sandbox diagnostic':' · Completed';
+      info.append(element('strong',title),element('span',dateLabel(order.paid_at)+' · '+priceLabel(order.amount)+summary));
+      const actions=element('div',undefined,'commerce-library-actions');
       if(typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
-        const orderLink=link('/order/?session_id='+encodeURIComponent(order.session_id),'Order details ↗');
-        orderLink.setAttribute('aria-label','View order details and delivery for '+product.title);
-        row.append(orderLink);
+        const detail=link('/order/?session_id='+encodeURIComponent(order.session_id),'Order details ↗');
+        detail.setAttribute('aria-label','View private order details for '+title);
+        actions.append(detail);
+        if(Number(order.amount)>0&&!product?.testOnly){
+          const receipt=link('/api/receipt/'+encodeURIComponent(order.session_id),'Stripe receipt ↗');
+          receipt.target='_blank';receipt.rel='noopener noreferrer';
+          actions.append(receipt);
+        }
       }
-      container.append(row);
+      row.append(info,actions);
+      history.append(row);
     }
   }
   async function showAccount(user,confirmed=false){
     $('loginArea').hidden=true;
     $('signedIn').hidden=false;
     $('panelTitle').textContent='Your private library.';
+    $('authHint').textContent='Products and orders are linked to your verified email account.';
     $('signedInEmail').textContent=user.email;
     try{
       const [library,store]=await Promise.all([api('/api/library'),api('/api/store')]);
@@ -232,6 +258,7 @@
     try{
       await api('/api/logout',{method:'POST',body:'{}'});
       $('loaderResult').replaceChildren();
+      $('libraryItems').replaceChildren();
       showLogin();
       alert('Signed out.');
     }catch(error){alert(error.message,true);}
