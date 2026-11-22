@@ -20,6 +20,7 @@ import {shouldRetryUnrecordedCheckout,expireIncompleteCheckout} from './checkout
 import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.js';
 import {verifiedLiveProduct,liveReleaseReadiness} from './live-sales-release-gates.js';
 import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.js';
+import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
 import {requiresSameOrigin,validLicenseKey,licenseRateLimitKey} from './loader-security.mjs';
@@ -292,6 +293,24 @@ async function sendPurchaseConfirmation(sessionId){
   await query('DELETE FROM purchase_notifications WHERE session_id=$1',[sessionId]);
   console.warn('Purchase email delivery pending',e.code||'EMAIL_SEND_FAILED',e.status||'');
  }
+}
+
+// If the transactional email provider temporarily fails, the notification claim
+// is removed by sendPurchaseConfirmation. This bounded retry finds only paid,
+// unsent receipts in the currently configured Stripe mode. A verified payment
+// is never fabricated or granted by the retry worker.
+let purchaseEmailRetryActive=false;
+async function retryUnsentConfirmations(){
+ if(purchaseEmailRetryActive||!stripe||!mailReady()||
+    providerAuth==='unauthorized'||providerAuth==='forbidden')return;
+ const modePrefix=checkoutOrderPrefix(process.env.STRIPE_SECRET_KEY);
+ if(!modePrefix)return;
+ purchaseEmailRetryActive=true;
+ try{
+  await retryPendingPurchaseEmails({query,send:sendPurchaseConfirmation,modePrefix,limit:10,
+   report:(message,code)=>console.warn(message,code)});
+ }catch(error){console.warn('Pending purchase email retry unavailable',error?.code||'unknown');}
+ finally{purchaseEmailRetryActive=false;}
 }
 
 // Registered BEFORE JSON parser: Stripe signatures require the untouched raw body.
@@ -613,6 +632,12 @@ init().then(async()=>{
  ]);
  console.log('Protected script integrity:',Object.values(payloadReadiness.products).filter(v=>v==='verified').length,'of 6');
  console.log('ZFLAG approved installer:',zflagInstallerReady?'verified':'not_available');
- app.listen(PORT,'0.0.0.0',()=>console.log(`BL Scripts Marketplace at ${SITE.origin}; checkout ${checkoutReady()?'READY':'LOCKED'}`));
+ app.listen(PORT,'0.0.0.0',()=>{
+  console.log(`BL Scripts Marketplace at ${SITE.origin}; checkout ${checkoutReady()?'READY':'LOCKED'}`);
+  // Start after the backend is listening; all timers are unref'd so shutdown
+  // is never prevented by a background email-retry task.
+  const initial=setTimeout(()=>{void retryUnsentConfirmations();},30000);initial.unref?.();
+  const periodic=setInterval(()=>{void retryUnsentConfirmations();},5*60*1000);periodic.unref?.();
+ });
 }).catch(e=>{console.error('Database initialization failed',e);process.exit(1);});
 export {app,checkoutReady,grantFromStripe};
