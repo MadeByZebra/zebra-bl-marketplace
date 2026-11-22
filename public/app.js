@@ -184,6 +184,17 @@ async function startup(){try{const saved=localStorage.getItem('zebra-shop-theme'
  $('#year').textContent=String(new Date().getFullYear());wire();setupDesignInteractions();
  try{const [store,me]=await Promise.all([api('/api/store'),api('/api/me')]);state={...state,...store,user:me.user};renderProducts();renderBundles();renderAccount();
   $('#paymentStatus').textContent=store.checkout_ready?(store.mode==='test'?'STRIPE TEST CHECKOUT READY':'STRIPE CHECKOUT READY'):'CHECKOUT SETUP PENDING';
+  const checkoutNotice=$('#checkoutNotice');
+  if(checkoutNotice){
+   checkoutNotice.hidden=Boolean(store.checkout_ready);
+   const title=$('#checkoutNoticeTitle'),body=$('#checkoutNoticeBody');
+   if(!store.checkout_ready){
+    title.textContent=store.mode==='test'?'Private checkout testing only':'Purchasing is temporarily unavailable';
+    body.textContent=store.mode==='test'
+     ? 'This storefront is running restricted Stripe tests. Public orders are unavailable and no real money is being charged.'
+     : String(store.checkout_message||'Payments are paused until the shop is ready. No payment has been taken.');
+   }
+  }
   if(store.test_checkout_ready){const btn=document.querySelector('#testCheckoutBtn');if(btn)btn.hidden=false;}if(!store.checkout_ready)toast('Store preview is live. Payments are disabled until configured.');
   await refreshOwned();const url=new URL(window.location.href);
   // ZFLAG's standalone site can link directly to its protected product panel.
