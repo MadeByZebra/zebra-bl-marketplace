@@ -42,6 +42,16 @@ function viewProduct(id){const p=findItem(id);if(!p)return;
  <label><input id="agreeTerms" type="checkbox"/> I agree to the <a href="#" data-policy-inline="terms"><u>terms, compatibility and refund policy</u></a>.</label>
  <button style="margin-top:12px" class="primary-button" id="purchaseNow" ${p.unavailable?'disabled':''}>${buyLabel}</button></div></div>`;
  openDialog($('#productDialog'));
+ // Disabled products may be previewed in checkout without charging anyone.
+ if(p.unavailable){
+  const area=$('#productDialogBody .dialog-buy');
+  const preview=document.createElement('a');
+  preview.className='outline-button';
+  preview.textContent='Preview secure checkout (no payment) ↗';
+  preview.href='/checkout/?sku='+encodeURIComponent(p.id);
+  preview.style.marginTop='12px';
+  area?.append(preview);
+ }
  const promoField=$('#discountCode'),promoFeedback=$('#discountFeedback');
  if(state.pendingDiscount){promoField.value=state.pendingDiscount;state.pendingDiscount='';}
  promoField?.addEventListener('input',()=>{promoFeedback.textContent='Apply to preview your discounted total.';});
@@ -55,7 +65,7 @@ function viewProduct(id){const p=findItem(id);if(!p)return;
  $('#purchaseNow')?.addEventListener('click',()=>{
   if(owns&&!p.items){closeDialogs();openLibrary();return;}
   if(!$('#agreeTerms').checked){toast('Please review and accept the store terms first.');return;}
-  purchase(p.id);
+  window.location.assign('/checkout/?sku='+encodeURIComponent(p.id)+'&code='+encodeURIComponent($('#discountCode')?.value.trim()||''));
  });
 }
 async function purchase(id){const p=findItem(id);if(!p||p.unavailable)return;

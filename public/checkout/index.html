@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000"><meta name="color-scheme" content="dark light">
+<meta name="description" content="BL Scripts secure checkout — verify your order and continue to Stripe.">
+<meta name="referrer" content="same-origin">
+<title>Secure checkout — Zebra's Shop</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/shop.css?v=8">
+<link rel="stylesheet" href="/zebra-true-black-v8.css?v=2">
+<link rel="stylesheet" href="/commerce.css?v=20261122">
+<script src="/shop.js?v=20261121" defer></script>
+<script src="/checkout/checkout.js?v=20261122" defer></script>
+</head>
+<body class="zebra-v8 commerce-page checkout-page">
+<a class="skip-link" href="#checkout-main">Skip to secure checkout</a>
+<header class="nav-shell"><div class="wrap nav">
+<a class="brand" href="/">ZEBRA’S SHOP <span class="commerce-brand-slash">/ BL SCRIPTS</span></a>
+<nav class="nav-links" aria-label="Main navigation"><a href="/scripts/">Shop</a><a href="/account/">My Library</a><a href="/support/">Support</a></nav>
+<div class="nav-actions"><button class="iconbtn" id="themeToggle" aria-label="Toggle theme">◐</button><span class="commerce-secure">◈ SECURE CHECKOUT</span></div>
+</div></header>
+<main id="checkout-main" class="commerce-shell wrap">
+<aside class="commerce-summary" aria-label="Order summary">
+ <div class="commerce-kicker"><span class="commerce-brandmark">Z</span><span>BL SCRIPTS <b>BY ZEBRA</b></span><span class="commerce-stamp">ONE-TIME</span></div>
+ <p class="commerce-eyebrow">YOUR ORDER</p>
+ <h1 class="commerce-price" id="summaryTotal" aria-live="polite">—</h1>
+ <p class="commerce-subnote">USD · One-time purchase · No subscription</p>
+ <div class="commerce-item-summary"><span class="commerce-product-icon">⌘</span><div><strong id="summaryName">Loading product…</strong><small id="summaryPlatform">BL Scripts · Private delivery</small></div><strong id="summaryPrice">—</strong></div>
+ <div class="commerce-totals"><div><span>Subtotal</span><b id="summarySubtotal">—</b></div><div><span>Discount</span><b id="summaryDiscount">—</b></div><div class="commerce-total"><span>Total due</span><b id="summaryDue">—</b></div></div>
+ <div class="commerce-assurance"><span>✓ Stripe-hosted card payment</span><span>✓ Private license delivery after verified payment</span><span>✓ No card information stored by Zebra’s Shop</span></div>
+ <div class="commerce-help"><span class="commerce-product-icon">?</span><div><strong>Need help before buying?</strong><p>Get answers about compatibility, delivery, or refunds.</p><a href="/support/">Open Support Center ↗</a></div></div>
+ <div class="commerce-footlinks"><a href="/terms/">Terms &amp; refunds</a><a href="/privacy/">Privacy</a><a href="/scripts/">Back to products</a></div>
+</aside>
+<section class="commerce-main">
+ <div class="commerce-steps" aria-label="Purchase steps"><span class="active"><i>1</i> Order information</span><span class="commerce-step-line"></span><span><i>2</i> Confirm &amp; pay</span><span class="commerce-step-line"></span><span><i>3</i> Receive your items</span></div>
+ <div class="commerce-heading"><p class="commerce-eyebrow">01 / SECURE CHECKOUT</p><h2>Review your order.</h2><p>Clear pricing and protected delivery, with no surprises.</p></div>
+ <div class="commerce-notice" id="checkoutNotice" role="status" aria-live="polite">Checking product availability…</div>
+ <section class="commerce-card" aria-labelledby="purchase-section-title">
+  <header class="commerce-card-head"><div><span class="commerce-eyebrow">YOUR SELECTION</span><h3 id="purchase-section-title">Product information</h3></div><a href="/scripts/" class="commerce-textlink">Change item ↗</a></header>
+  <div class="commerce-selected"><span class="commerce-product-icon commerce-product-icon-large">⌘</span><div><strong id="productTitle">Loading…</strong><p id="productDescription">Retrieving current catalog information from Zebra’s Shop.</p><small id="productBadge">SERVER VERIFIED CATALOG</small></div></div>
+  <div class="commerce-included"><span class="commerce-eyebrow">WHAT'S INCLUDED</span><ul id="productFeatures"><li>Protected account delivery</li></ul><p id="productCompatibility" class="commerce-muted"></p></div>
+ </section>
+ <section class="commerce-card" aria-labelledby="sign-in-section-title">
+  <header class="commerce-card-head"><div><span class="commerce-eyebrow">ACCOUNT VERIFICATION</span><h3 id="sign-in-section-title">Your account</h3></div><span class="commerce-pill">SIX-DIGIT CODE</span></header>
+  <p class="commerce-muted">Your purchase is linked to a verified email account, not a transferable public download.</p>
+  <div id="signedInPanel" class="commerce-signed-in" hidden><span class="commerce-success-symbol">✓</span><div><strong>Signed in</strong><p id="signedInEmail"></p></div><a href="/account/">My Library ↗</a></div>
+  <form id="emailForm" class="commerce-form"><label for="checkoutEmail">EMAIL ADDRESS</label><div class="commerce-fieldrow"><input id="checkoutEmail" name="email" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com"><button class="commerce-button" type="submit" id="sendCode">Send code</button></div><p class="commerce-muted">No password required. We never ask for your Stripe login.</p></form>
+  <form id="verifyForm" class="commerce-form" hidden><label for="checkoutOtp">EMAIL VERIFICATION CODE</label><div class="commerce-fieldrow"><input id="checkoutOtp" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"><button class="commerce-button" type="submit" id="verifyCode">Verify</button></div><button id="changeEmail" class="commerce-textlink" type="button">Use a different email</button></form>
+  <p id="authStatus" class="commerce-inline-status" role="status" aria-live="polite"></p>
+ </section>
+ <section class="commerce-card" aria-labelledby="payment-section-title">
+  <header class="commerce-card-head"><div><span class="commerce-eyebrow">02 / PAYMENT DETAILS</span><h3 id="payment-section-title">Confirm &amp; pay</h3></div><span class="commerce-pill">STRIPE CHECKOUT</span></header>
+  <label class="commerce-form" for="promoCode">PROMO CODE (OPTIONAL)</label><div class="commerce-fieldrow"><input id="promoCode" type="text" maxlength="32" placeholder="Enter code" autocomplete="off" spellcheck="false"><button id="applyPromo" type="button" class="commerce-button commerce-secondary">Apply</button></div><p id="promoStatus" class="commerce-muted" aria-live="polite">Discounts are verified by the store before payment.</p>
+  <label class="commerce-terms"><input type="checkbox" id="acceptTerms"><span>I agree to the <a href="/terms/" target="_blank" rel="noopener noreferrer">purchase, refund and compatibility terms</a>. Roblox and Boxing League do not endorse these tools.</span></label>
+  <button id="completeCheckout" class="commerce-button commerce-primary" disabled type="button">Continue to Stripe ↗</button>
+  <p class="commerce-muted commerce-centered">Your card is entered on Stripe's secure checkout page, never here.</p>
+  <p id="checkoutStatus" class="commerce-inline-status" aria-live="polite" role="status"></p>
+ </section>
+ <footer class="commerce-bottom">© Zebra’s Shop · Independently developed tools <a href="/support/">Contact support</a></footer>
+</section>
+</main>
+</body></html>

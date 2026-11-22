@@ -1,1 +1,62 @@
-<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080808"><meta name="color-scheme" content="dark light"><meta name="description" content="Your shared Zebra’s Shop account for BL Scripts and ZFLAG"><title>My Account — Zebra’s Shop</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/shop.css?v=8"><link rel="stylesheet" href="/zebra-true-black-v8.css?v=2"><script src="/shop.js?v=20261121" defer></script><script src="/account/account.js?v=2" defer></script><link rel="stylesheet" href="/zebra-chat.css"><script src="/smooth-scroll.js?v=20261121v21" defer></script></head><body class="zebra-v8 account-page"><header class="nav-shell"><div class="wrap nav"><a class="brand" href="/">ZEBRA’S SHOP</a><nav class="nav-links"><a href="/">Overview</a><a href="/scripts/">BL Scripts</a><a href="/zflag/">ZFLAG</a><a href="/account/" class="active">My account</a></nav><div class="nav-actions"><button class="iconbtn" id="themeToggle" aria-label="Toggle theme">◐</button><a href="/scripts/" class="btn primary">Browse products ↗</a></div></div></header><main><section class="section" style="padding-top:162px;min-height:83vh;border-top:0"><div class="wrap"><div class="section-head reveal in"><div><div class="atelier-pill"><i></i><b>ZEBRA / ACCOUNT</b><span>TRUE BLACK EDITION</span></div><span class="kicker">PRIVATE LIBRARY / ONE ACCOUNT</span><h2>One sign-in.<br><span>All your tools.</span></h2></div><p>Sign in using a six-digit code sent to your email. Your verified purchases for BL Scripts and ZFLAG appear here in one private library.</p></div><div class="account-panel reveal in"><div id="accountInfo"><span class="kicker">ACCOUNT / PRIVATE LIBRARY</span><h2 id="panelTitle">Sign in by email.</h2><p class="quiet-note" id="authHint">We’ll send a one-time six-digit code. No password needed.</p><div id="loginArea"><form id="emailForm"><label for="loginEmail">EMAIL ADDRESS</label><input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" maxlength="254" required><button type="submit" class="btn primary" id="sendCode">Send sign-in code ↗</button></form><form id="verifyForm" hidden><label for="loginCode">SIX-DIGIT CODE</label><input id="loginCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required><button type="submit" class="btn primary" id="verifyCode">Verify and sign in ↗</button><button type="button" class="btn" id="resendCode" disabled>Resend code</button><button type="button" class="btn" id="changeEmail">Change email</button></form></div><div id="signedIn" hidden><p class="quiet-note">Signed in as <strong id="signedInEmail"></strong></p><div id="libraryItems"></div><div id="loaderResult" aria-live="polite"></div><button class="btn" id="signOut" type="button">Sign out</button></div><p id="accountStatus" class="account-alert" aria-live="polite"></p></div></div></div><aside class="zebra-inline-support-cta" aria-label="Zebra Shop customer support"><div><strong>Need help with an order or a product?</strong><p>Reach Zebra's Shop directly by email, or browse answers in our Support Center. Never share card details or sign-in codes.</p></div><div class="zebra-inline-support-actions"><a class="zebra-inline-email" href="/support/#contact" data-zebra-email-support>Email Support ↗</a><a href="/support/">Support Center ↗</a></div></aside></section><section class="section"><div class="wrap"><div class="section-head reveal"><div><span class="kicker">01 / SECURE ACCESS</span><h2>Verified purchases.<br><span>Protected delivery.</span></h2></div><p>Only server-verified Stripe payments unlock licenses. Purchases never expose source code through the public site. No client-side protection can prevent all redistribution.</p></div><div class="steps reveal"><div class="step"><span class="kicker">01 / SIGN IN</span><h3>Your email</h3><p>Receive a single-use six-digit code from Zebra’s verified sender, once configured.</p></div><div class="step"><span class="kicker">02 / PURCHASE</span><h3>Stripe checkout</h3><p>Pay with Stripe-hosted checkout after sandbox verification and payment setup.</p></div><div class="step"><span class="kicker">03 / ACCESS</span><h3>My library</h3><p>View owned scripts and download the verified ZFLAG installer when it becomes available.</p></div></div></div></section></main><footer class="footer"><div class="wrap footer-inner"><div><a class="brand" href="/">ZEBRA’S SHOP</a><p class="footer-desc">One account across both workspaces.</p></div><div class="footer-links"><a href="/">Overview</a><a href="/scripts/">BL Scripts</a><a href="/zflag/">ZFLAG</a><a href="https://zflag.onrender.com/">Full ZFLAG site ↗</a></div></div><div class="zebra-footer-help"><a href="/support/">Support Center</a><a href="/support/#contact" data-zebra-email-support class="zebra-footer-email-link">Email Support ↗</a><a href="/privacy/">Privacy Policy</a><a href="/terms/">Terms &amp; Refunds</a><span>Help: <a href="/support/#contact">zebrablshopofficial@gmail.com</a></span></div></footer><script src="/zebra-support-chat.js?v=20261121v1" defer></script></body></html>
+<!doctype html>
+<html lang="en" data-theme="dark"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000"><meta name="color-scheme" content="dark light">
+<meta name="description" content="Your BL Scripts private library, personal licenses, purchases, receipts and support.">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="same-origin">
+<title>My Library — Zebra’s Shop</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="/shop.css?v=8"><link rel="stylesheet" href="/zebra-true-black-v8.css?v=2">
+<link rel="stylesheet" href="/commerce.css?v=20261122">
+<link rel="stylesheet" href="/zebra-chat.css">
+<script src="/shop.js?v=20261121" defer></script>
+<script src="/account/account.js?v=20261122" defer></script>
+<script src="/smooth-scroll.js?v=20261121v21" defer></script>
+</head>
+<body class="zebra-v8 commerce-page commerce-account account-page">
+<a class="skip-link" href="#my-library">Skip to My Library</a>
+<header class="nav-shell"><div class="wrap nav"><a class="brand" href="/">ZEBRA’S SHOP <span class="commerce-brand-slash">/ MY LIBRARY</span></a><nav class="nav-links"><a href="/">Overview</a><a href="/scripts/">BL Scripts</a><a href="/zflag/">ZFLAG</a><a class="active" href="/account/">My account</a></nav><div class="nav-actions"><button class="iconbtn" id="themeToggle" aria-label="Toggle theme">◐</button><a href="/scripts/" class="btn primary">Browse products ↗</a></div></div></header>
+<main class="commerce-shell wrap" id="my-library">
+ <aside class="commerce-summary">
+  <div class="commerce-kicker"><span class="commerce-brandmark">Z</span><span>BL SCRIPTS <b>BY ZEBRA</b></span><span class="commerce-stamp">PRIVATE ACCESS</span></div>
+  <p class="commerce-eyebrow">YOUR PERSONAL WORKSPACE</p>
+  <h1 class="commerce-price">My Library<span style="color:#b8a3fc">.</span></h1>
+  <p class="commerce-subnote">Verified purchases, personal loadstrings, official receipts and order history in one place.</p>
+  <div class="commerce-item-summary"><span class="commerce-product-icon">⌘</span><div><strong>Private digital delivery</strong><small>One account · All purchased tools</small></div></div>
+  <div class="account-side-list"><div><b>✓</b> Verified purchase records</div><div><b>✓</b> On-demand personal license keys</div><div><b>✓</b> Individual order details &amp; receipts</div><div><b>✓</b> Secure email sign-in</div></div>
+  <div class="commerce-help"><span class="commerce-product-icon">?</span><div><strong>Need help with an order?</strong><p>Get help with product delivery, refunds or compatibility.</p><a href="/support/">Open Support Center ↗</a></div></div>
+  <div class="commerce-footlinks"><a href="/terms/">Terms &amp; refunds</a><a href="/privacy/">Privacy</a><a href="/scripts/">Browse tools</a></div>
+ </aside>
+ <section class="commerce-main">
+  <div class="commerce-steps"><span class="completed"><i>✓</i> Explore products</span><span class="commerce-step-line"></span><span class="completed"><i>✓</i> Your account</span><span class="commerce-step-line"></span><span class="active"><i>3</i> Private library</span></div>
+  <div class="commerce-heading"><span class="commerce-eyebrow">ACCOUNT / DIGITAL FULFILLMENT</span><h2>Everything you own.<br><span style="color:var(--commerce-muted)">One place.</span></h2><p>Access is only granted after the server verifies your purchase with Stripe.</p></div>
+  <div class="account-panel" id="accountInfo">
+   <span class="commerce-eyebrow">PRIVATE ACCOUNT</span>
+   <h2 id="panelTitle">Sign in by email.</h2>
+   <p class="commerce-muted" id="authHint">We’ll send a six-digit, single-use code. No password required.</p>
+   <div id="loginArea">
+    <form id="emailForm" class="commerce-form">
+     <label for="loginEmail">EMAIL ADDRESS</label>
+     <input type="email" id="loginEmail" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+     <button id="sendCode" type="submit" class="btn primary">Send sign-in code ↗</button>
+    </form>
+    <form id="verifyForm" class="commerce-form" hidden>
+     <label for="loginCode">SIX-DIGIT CODE</label>
+     <input id="loginCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
+     <div class="commerce-actions"><button type="submit" class="btn primary" id="verifyCode">Verify and sign in ↗</button><button type="button" class="btn" id="resendCode" disabled>Resend code</button><button type="button" class="btn" id="changeEmail">Change email</button></div>
+    </form>
+   </div>
+   <div id="signedIn" hidden>
+    <div class="commerce-signed-in"><span class="commerce-success-symbol">✓</span><div><strong>Signed in securely</strong><p id="signedInEmail"></p></div><a href="/scripts/">Shop ↗</a></div>
+    <div id="libraryItems" style="margin-top:20px"></div>
+    <div id="loaderResult" aria-live="polite"></div>
+    <button class="btn" id="signOut" type="button" style="margin-top:22px">Sign out</button>
+   </div>
+   <p id="accountStatus" class="account-alert" aria-live="polite"></p>
+  </div>
+  <div class="commerce-bottom">Always keep your personal loadstrings private. <a href="/support/">Support Center</a></div>
+ </section>
+<aside class="zebra-inline-support-cta" aria-label="Zebra Shop customer support"><div><strong>Need help with an order or a product?</strong><p>Our support center can help with purchases, compatibility, refunds and delivery. Never share card details or sign-in codes.</p></div><div class="zebra-inline-support-actions"><a class="zebra-inline-email" href="/support/#contact" data-zebra-email-support>Email Support ↗</a><a href="/support/">Support Center ↗</a></div></aside>
+</main>
+<footer class="footer"><div class="wrap footer-inner"><a class="brand" href="/">ZEBRA’S SHOP</a><div class="footer-links"><a href="/scripts/">BL Scripts</a><a href="/account/">My Library</a><a href="/support/">Support</a></div></div><div class="zebra-footer-help"><a href="/support/#contact" class="zebra-footer-email-link" data-zebra-email-support>Email Support ↗</a><a href="/privacy/">Privacy Policy</a><a href="/terms/">Terms &amp; Refunds</a></div></footer>
+<script src="/zebra-support-chat.js?v=20261121v1" defer></script>
+</body></html>

@@ -35,6 +35,7 @@ import {marketplaceSchema} from './marketplace-schema.js';
 import {migrateMarketplaceDatabase} from './neon-migration.js';
 import {runUnpaidLiveCheckoutPreflight} from './live-launch-preflight.js';
 import {runEmailDeliveryProbe} from './email-delivery-probe.js';
+import {parseOrderFeedback,validCheckoutReference} from './order-feedback.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -521,8 +522,8 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
    line_items:[{price_data:{currency:'usd',unit_amount:quote.free?item.price:quote.total,
       product_data:{name:item.title,description:item.description.slice(0,400)}},quantity:1}],
    metadata:{sku,user_id:req.user.id,promo_code:quote.code||'',free_promo:quote.free?'v1':'no'},
-   success_url:`${SITE.origin}/account/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-   cancel_url:`${SITE.origin}/scripts/?checkout=cancel`,
+   success_url:`${SITE.origin}/order/?session_id={CHECKOUT_SESSION_ID}`,
+   cancel_url:`${SITE.origin}/checkout/?sku=${encodeURIComponent(sku)}&canceled=1`,
    expires_at:Math.floor(Date.now()/1000)+60*60
   };
   if(quote.free){
@@ -569,6 +570,49 @@ app.get('/api/library',requireUser,async(req,res)=>{
   const owned=[...new Set(orders.flatMap(o=>includedIds(byId[o.sku]||{id:o.sku})))];
   res.json({owned,orders:orders.map(({sku,amount,paid_at,session_id})=>({sku,amount,paid_at,session_id}))});
  }catch(e){safeError(res,e);}
+});
+// Private order details are always scoped to the logged-in purchaser.
+app.get('/api/order/:sessionId',requireUser,async(req,res)=>{
+ const id=String(req.params.sessionId||'');
+ if(!validCheckoutReference(id))return res.status(400).json({error:'Invalid order reference.'});
+ if(!checkoutOrderMatchesMode(id,process.env.STRIPE_SECRET_KEY))return res.sendStatus(404);
+ try{
+  const order=(await query('SELECT session_id,sku,amount,status,created_at,paid_at FROM purchases WHERE session_id=$1 AND user_id=$2',[id,req.user.id]))[0];
+  if(!order)return res.status(404).json({error:'Order not found for this account.'});
+  const product=byId[order.sku];if(!product)return res.status(404).json({error:'Product record unavailable.'});
+  const status=['paid','pending','revoked'].includes(order.status)?order.status:'pending';
+  const paid=status==='paid';
+  const itemIds=paid&&!product.testOnly?includedIds(product):[];
+  const items=itemIds.map(sku=>byId[sku]).filter(Boolean).map(p=>({
+   id:p.id,title:p.title,kind:p.kind==='download'?'download':'loader'
+  }));
+  const feedback=(await query('SELECT rating,comment FROM order_feedback WHERE session_id=$1 AND user_id=$2',[id,req.user.id]))[0]||null;
+  res.json({
+   session_id:order.session_id,sku:order.sku,title:product.title,amount:Number(order.amount),
+   status,created_at:Number(order.created_at),paid_at:order.paid_at?Number(order.paid_at):null,
+   testOnly:!!product.testOnly,items,feedback
+  });
+ }catch(err){safeError(res,err);}
+});
+// Never auto-generate five-star reviews. Feedback is voluntary, private and
+// limited to the verified owner of a completed, non-diagnostic purchase.
+const feedbackLimiter=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false});
+app.post('/api/order/:sessionId/feedback',feedbackLimiter,requireUser,async(req,res)=>{
+ const id=String(req.params.sessionId||'');
+ if(!validCheckoutReference(id)||!checkoutOrderMatchesMode(id,process.env.STRIPE_SECRET_KEY))
+  return res.status(404).json({error:'Order not found.'});
+ const valid=parseOrderFeedback(req.body);
+ if(!valid.ok)return res.status(400).json({error:valid.error});
+ try{
+  const order=(await query('SELECT sku FROM purchases WHERE session_id=$1 AND user_id=$2 AND status=$3',[id,req.user.id,'paid']))[0];
+  if(!order||!byId[order.sku]||byId[order.sku].testOnly)return res.status(403).json({error:'A verified purchase is required to leave feedback.'});
+  const time=now();
+  await query(`INSERT INTO order_feedback(session_id,user_id,rating,comment,created_at,updated_at)
+   VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(session_id)
+   DO UPDATE SET rating=EXCLUDED.rating,comment=EXCLUDED.comment,updated_at=EXCLUDED.updated_at
+   WHERE order_feedback.user_id=EXCLUDED.user_id`,[id,req.user.id,valid.rating,valid.comment,time,time]);
+  res.json({ok:true});
+ }catch(err){safeError(res,err);}
 });
 // Authenticated users can open their own official Stripe hosted receipts.
 app.get('/api/receipt/:sessionId',requireUser,async(req,res)=>{
