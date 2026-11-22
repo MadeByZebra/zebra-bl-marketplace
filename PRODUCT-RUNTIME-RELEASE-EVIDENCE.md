@@ -31,9 +31,9 @@ Record seller-owned, permitted test-session evidence for **each individual SKU**
 
 - Stripe merchant activated: charges and payouts enabled; live webhook enabled for checkout, refund and dispute events.
 - Render live restricted server key authorized; unpaid preflight successfully created and immediately expired one **live** Checkout Session, and read Checkout Sessions, PaymentIntents and charges. **No customer card was charged.**
-- Brevo accepted one labeled test email, but actual inbox receipt was **not confirmed**, nor was an official buyer receipt tested.
+- Brevo accepted a labeled test email and **one newly sent email was confirmed in the connected Gmail inbox on 2026-11-22**; second-provider deliverability and official buyer receipt remain **not tested**.
 - Database moved from Render Free (expiration 2026-12-21) to Neon Free Oregon with 9 tables copied; 1 user, 6 historical purchases (test-mode records), 1 license, 2 notification records, 3 support threads and 10 messages were verified immediately after migration.
-- A manual Neon recovery snapshot was created, then restored to a separate verification branch; counts matched. Automatic Neon snapshot schedules are **not enabled** on this Free project. A ChatGPT daily snapshot task was created, first scheduled 2026-11-23; its operation must be monitored and it does not replace offsite backup.
+- A manual Neon recovery snapshot was created, then restored to a separate verification branch; counts matched. Automatic Neon snapshot schedules are **not enabled** on this Free project. A new GitHub Actions encrypted offsite pg_dump workflow is committed but **will not produce backups until a private Neon connection string is added as repository secret `BL_SCRIPTS_NEON_BACKUP_URL` and the first run succeeds**. The recovery private key is held outside GitHub in an owner-downloadable ChatGPT recovery kit. A ChatGPT daily snapshot task was created, first scheduled 2026-11-23; its operation must be monitored and it does not replace offsite backup.
 - Six protected script payloads passed decryption/hash checks on Render, but **none is runtime-certified** and ZFLAG's approved installer is missing.
 - `ALLOW_LIVE_SALES=0`, `LIVE_DATABASE_CONFIRMED=0`, `LIVE_VERIFIED_SKUS=`, and `LIVE_ZFLAG_VERIFIED=0` remain enforced.
 
