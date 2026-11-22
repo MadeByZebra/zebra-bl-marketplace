@@ -69,3 +69,5 @@ jobs:
       - run: npm install --no-audit
       - name: Verify atomic Neon transfer and rollback with real PostgreSQL
         run: node --test tests/neon-migration.integration.test.js
+      - name: Verify Stripe paid fulfillment, free coupon, receipt, refund and dispute against PostgreSQL
+        run: node --test tests/stripe-fulfillment.integration.test.js
