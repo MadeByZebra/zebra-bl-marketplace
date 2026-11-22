@@ -1,0 +1,69 @@
+name: Checkout and protected-product live smoke test
+on:
+  push:
+    paths:
+      - .github/workflows/checkout-live-smoke.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check live storefront, Stripe sandbox and protected script health
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const base='https://zebra-bl-marketplace.onrender.com';
+          async function request(path, options={}){
+            const r=await fetch(base+path,{
+              ...options,
+              headers:{Accept:'application/json',...options.headers}
+            });
+            let j={};try{j=await r.json();}catch(_e){}
+            return {code:r.status,json:j};
+          }
+          const health=await request('/api/health');
+          assert.equal(health.code,200);
+          const h=health.json;
+          console.log('HEALTH',JSON.stringify({
+            mode:h.mode,checkout:h.checkout,postgres_ready:h.postgres_ready,
+            stripe_api_ready:h.stripe_api_ready,webhook_configured:h.webhook_configured,
+            email_login_ready:h.email_login_ready,verified_script_count:h.verified_script_count,
+            vault_ready:h.vault_ready,zflag_installer_ready:h.zflag_installer_ready
+          }));
+          assert.equal(h.mode,'test','Real sales must still be disabled');
+          assert.equal(h.stripe_api_ready,true);
+          assert.equal(h.webhook_configured,true);
+          assert.equal(h.postgres_ready,true);
+          assert.equal(h.email_login_ready,true);
+          assert.equal(h.verified_script_count,6,'Six protected Lua artifacts must decrypt and hash-match');
+          assert.equal(h.vault_ready,true,'Protected assets not verified');
+          assert.equal(h.zflag_installer_ready,false,'No paid ZFLAG build was approved');
+
+          const publicStore=await request('/api/store');
+          assert.equal(publicStore.code,200);
+          const store=publicStore.json;
+          assert.equal(store.mode,'test');
+          assert.equal(store.checkout_ready,false,'Anonymous customers must not pay in sandbox');
+          assert.equal(store.test_checkout_ready,false);
+          assert.ok(store.catalog.products.every(p=>p.unavailable),'Public scripts must remain on hold');
+          assert.ok(store.catalog.bundles.every(p=>p.unavailable),'Public bundles must remain on hold');
+          assert.ok(store.catalog.extras.find(p=>p.id==='zflag-injector').unavailable,'Untested ZFLAG is not for sale');
+          assert.ok(store.catalog.extras.find(p=>p.id==='checkout-test').unavailable,'Public sandbox test is not purchasable');
+
+          const blocked=await request('/api/loader/str-grinder?key=ZBL_'+'0'.repeat(56));
+          assert.equal(blocked.code,403,'Unknown license must not expose encrypted script');
+          const installer=await request('/api/injector/download');
+          assert.ok([401,403].includes(installer.code),'Unverified user must not access paid installer');
+
+          const js=await fetch(base+'/zebra-support-chat.js?v=20261121v1').then(r=>r.text());
+          assert.match(js,/checkoutReturn/);
+          assert.doesNotMatch(js,/embed\.tawk\.to/);
+          const css=await fetch(base+'/zebra-chat.css').then(r=>r.text());
+          assert.match(css,/zebra-payment-return/);
+          assert.match(css,/body:has\(dialog\[open\]\)/);
+          console.log('PASS: sandbox, six protected scripts, denied unauthorized payloads and chat/checkout compatibility');
+          NODE
