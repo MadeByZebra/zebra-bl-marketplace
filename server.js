@@ -19,6 +19,7 @@ import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js
 import {shouldRetryUnrecordedCheckout,expireIncompleteCheckout} from './checkout-consistency.js';
 import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.js';
 import {verifiedLiveProduct,liveReleaseReadiness} from './live-sales-release-gates.js';
+import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
 import {requiresSameOrigin,validLicenseKey,licenseRateLimitKey} from './loader-security.mjs';
@@ -490,6 +491,7 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
 });
 app.post('/api/confirm',checkoutLimiter,requireUser,async(req,res)=>{
  const sessionId=String(req.body?.session_id||'');if(!/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(sessionId))return res.status(400).json({error:'Invalid checkout reference.'});
+ if(!checkoutOrderMatchesMode(sessionId,process.env.STRIPE_SECRET_KEY))return res.status(404).json({error:'Purchase not found in the current payment environment.'});
  if(!stripe)return res.status(503).json({error:'Payments not configured.'});
  try{
   const order=(await query('SELECT * FROM purchases WHERE session_id=$1 AND user_id=$2',[sessionId,req.user.id]))[0];
@@ -503,7 +505,7 @@ app.post('/api/confirm',checkoutLimiter,requireUser,async(req,res)=>{
 });
 app.get('/api/library',requireUser,async(req,res)=>{
  try{
-  const orders=await query(`SELECT sku,amount,paid_at,session_id FROM purchases WHERE user_id=$1 AND status='paid' ORDER BY paid_at DESC`,[req.user.id]);
+  const orders=await query(`SELECT sku,amount,paid_at,session_id FROM purchases WHERE user_id=$1 AND status='paid' AND SUBSTR(session_id,1,8)=$2 ORDER BY paid_at DESC`,[req.user.id,checkoutOrderPrefix(process.env.STRIPE_SECRET_KEY)]);
   const owned=[...new Set(orders.flatMap(o=>includedIds(byId[o.sku]||{id:o.sku})))];
   res.json({owned,orders:orders.map(({sku,amount,paid_at,session_id})=>({sku,amount,paid_at,session_id}))});
  }catch(e){safeError(res,e);}
@@ -512,6 +514,7 @@ app.get('/api/library',requireUser,async(req,res)=>{
 app.get('/api/receipt/:sessionId',requireUser,async(req,res)=>{
  const id=String(req.params.sessionId||'');
  if(!/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(id))return res.sendStatus(400);
+ if(!checkoutOrderMatchesMode(id,process.env.STRIPE_SECRET_KEY))return res.sendStatus(404);
  try{
   const order=(await query('SELECT payment_intent FROM purchases WHERE session_id=$1 AND user_id=$2 AND status=\'paid\'',
     [id,req.user.id]))[0];
@@ -538,7 +541,7 @@ async function entitlementIsPaid(userId,sku){
   const owner=(await query('SELECT email FROM users WHERE id=$1',[userId]))[0];
   if(!mayDeliverSandboxScript(owner?.email))return false;
  }
- const orders=await query(`SELECT * FROM purchases WHERE user_id=$1 AND status='paid' ORDER BY paid_at DESC`,[userId]);
+ const orders=await query(`SELECT * FROM purchases WHERE user_id=$1 AND status='paid' AND SUBSTR(session_id,1,8)=$2 ORDER BY paid_at DESC`,[userId,checkoutOrderPrefix(process.env.STRIPE_SECRET_KEY)]);
  for(const order of orders){
   if(!includedIds(byId[order.sku]||{id:order.sku}).includes(sku))continue;
   if(!stripe)return false;
