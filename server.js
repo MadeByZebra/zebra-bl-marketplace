@@ -32,6 +32,7 @@ import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail 
 import {validateSupportRequest,supportEmailContent} from './support-request.js';
 import {registerZebraChat} from './zebra-chat-server.js';
 import {marketplaceSchema} from './marketplace-schema.js';
+import {migrateMarketplaceDatabase} from './neon-migration.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -94,9 +95,11 @@ async function checkStripeOnStartup(){
    'key type:',stripeKeyType(process.env.STRIPE_SECRET_KEY)||'invalid');
  if(configuredForLive())console.log('Live Stripe merchant diagnostic:',liveMerchant.ready?'ready':'not_ready');
 }
-const usingPostgres=!!process.env.DATABASE_URL;
-let pool,sqlite;
-if(usingPostgres){pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_SSL==='require'?{rejectUnauthorized:true}:undefined});}
+const neonCutoverEnabled=process.env.NEON_MIGRATION_APPROVED==='1'&&!!process.env.NEON_DATABASE_URL;
+const usingPostgres=!!(process.env.DATABASE_URL||neonCutoverEnabled);
+let pool,sqlite,neonMigrationStatus='not_configured';
+if(usingPostgres){pool=new Pool({connectionString:neonCutoverEnabled?process.env.NEON_DATABASE_URL:process.env.DATABASE_URL,
+ ssl:!neonCutoverEnabled&&process.env.DATABASE_SSL==='require'?{rejectUnauthorized:true}:undefined});}
 else {sqlite=new DatabaseSync(path.join(ROOT,process.env.LOCAL_DB_PATH||'marketplace.sqlite'));sqlite.exec('PRAGMA journal_mode = WAL;PRAGMA foreign_keys = ON;');}
 const schema=marketplaceSchema;
 async function query(sql,values=[]){
@@ -105,6 +108,19 @@ async function query(sql,values=[]){
  return /^\s*(SELECT|WITH)\b/i.test(sql)?stmt.all(...values):(stmt.run(...values),[]);
 }
 async function init(){for(const sql of schema)await query(sql);}
+async function bootstrapDatabase(){
+ if(neonCutoverEnabled){
+  const result=await migrateMarketplaceDatabase({
+   sourceUrl:process.env.DATABASE_URL,targetUrl:process.env.NEON_DATABASE_URL,
+   targetPool:pool,maintenanceActive:process.env.STORE_MAINTENANCE==='1',
+   makeSourcePool:url=>new Pool({connectionString:url,
+    ssl:process.env.DATABASE_SSL==='require'?{rejectUnauthorized:true}:undefined}),
+   logger:(message,num)=>console.log(message,num)
+  });
+  neonMigrationStatus=result.status;
+ }
+ await init();
+}
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const emailValid = email => email.length<=254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const codeHash=(email,code)=>hashEmailOtp(email,code);
@@ -128,12 +144,21 @@ function clearCookie(res){res.setHeader('Set-Cookie',`bl_session=; Path=/; Max-A
 const app=express();app.disable('x-powered-by');app.set('trust proxy',1);
 app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],scriptSrc:["'self'",'https://cdn.jsdelivr.net'],styleSrc:["'self'","'unsafe-inline'",'https://fonts.googleapis.com','https://cdn.jsdelivr.net'],fontSrc:["'self'",'https://fonts.gstatic.com'],imgSrc:["'self'",'data:','https://cdn.jsdelivr.net','https://s3.amazonaws.com'],connectSrc:["'self'"],frameSrc:['https://www.youtube-nocookie.com','https://player.vimeo.com'],objectSrc:["'none'"],baseUri:["'self'"],formAction:["'self'",'https://checkout.stripe.com'],upgradeInsecureRequests:LIVE?[]:null}},crossOriginEmbedderPolicy:false}));
 app.use('/api',(_,res,next)=>{res.set('Cache-Control','no-store');next();});
+// First deploy with STORE_MAINTENANCE=1 to freeze all account, order and
+// chat writes BEFORE the source snapshot is copied to Neon. Stripe retries
+// 503 webhook responses; no charges can start during this maintenance period.
+app.use('/api',(req,res,next)=>{
+ if(process.env.STORE_MAINTENANCE==='1'&&!['GET','HEAD','OPTIONS'].includes(req.method)){
+  res.set('Retry-After','120');return res.status(503).json({error:'Store maintenance in progress. No payment was taken. Please retry shortly.'});
+ }
+ next();
+});
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false});
 const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
 const supportFormLimiter=rateLimit({windowMs:60*60*1000,limit:4,standardHeaders:'draft-7',legacyHeaders:false});
 const testMode=()=>stripeKeyMode(process.env.STRIPE_SECRET_KEY)==='test';
-const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&!!stripeKeyMode(process.env.STRIPE_SECRET_KEY)&&configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env)&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
+const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&!!stripeKeyMode(process.env.STRIPE_SECRET_KEY)&&configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env)&&process.env.DISABLE_CHECKOUT!=='1'&&process.env.STORE_MAINTENANCE!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(
  testMode()?process.env.ENABLE_TEST_CHECKOUT==='1'&&sandboxEmails().length>0:
  process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'&&liveMerchant.ready&&liveReleaseReadiness(process.env).ready
@@ -295,7 +320,7 @@ async function sendPurchaseConfirmation(sessionId){
 // is never fabricated or granted by the retry worker.
 let purchaseEmailRetryActive=false;
 async function retryUnsentConfirmations(){
- if(purchaseEmailRetryActive||!stripe||!mailReady()||
+ if(purchaseEmailRetryActive||process.env.STORE_MAINTENANCE==='1'||!stripe||!mailReady()||
     providerAuth==='unauthorized'||providerAuth==='forbidden')return;
  const modePrefix=checkoutOrderPrefix(process.env.STRIPE_SECRET_KEY);
  if(!modePrefix)return;
@@ -313,7 +338,7 @@ async function retryUnsentConfirmations(){
 // activating an entitlement or sending a purchase confirmation.
 let pendingReconcileActive=false;
 async function reconcilePendingOrders(){
- if(pendingReconcileActive||!stripe||stripeAuth!=='authorized'||!usingPostgres)return;
+ if(pendingReconcileActive||process.env.STORE_MAINTENANCE==='1'||!stripe||stripeAuth!=='authorized'||!usingPostgres)return;
  const prefix=checkoutOrderPrefix(process.env.STRIPE_SECRET_KEY);
  if(!prefix)return;
  pendingReconcileActive=true;
@@ -629,7 +654,8 @@ app.get('/api/health',(_req,res)=>{
   mode:stripeKeyMode(process.env.STRIPE_SECRET_KEY)||'unconfigured',
   email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
   stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env),
-  postgres_ready:usingPostgres,vault_ready:vaultReady,verified_script_count:Object.values(payloadReadiness.products).filter(v=>v==='verified').length,zflag_installer_ready:zflagInstallerReady,
+  postgres_ready:usingPostgres,database_backend:neonCutoverEnabled?'neon':'render',
+  neon_migration_status:neonMigrationStatus,vault_ready:vaultReady,verified_script_count:Object.values(payloadReadiness.products).filter(v=>v==='verified').length,zflag_installer_ready:zflagInstallerReady,
    live_merchant_ready:configuredForLive()&&liveMerchant.ready,
   disabled_by_owner:process.env.DISABLE_CHECKOUT==='1',
   sandbox_testers_configured:sandboxEmails().length>0,
@@ -638,7 +664,7 @@ app.get('/api/health',(_req,res)=>{
 });
 app.use(express.static(path.join(ROOT,'public'),{index:'index.html',dotfiles:'deny',setHeaders:r=>r.setHeader('Cache-Control','public,max-age=300')}));
 app.get('*',(_req,res)=>res.sendFile(path.join(ROOT,'public','index.html')));
-init().then(async()=>{
+bootstrapDatabase().then(async()=>{
  await Promise.all([
   checkProviderOnStartup().catch(()=>console.warn('Email provider diagnostic unavailable')),
   checkStripeOnStartup().catch(()=>console.warn('Stripe key diagnostic unavailable'))
