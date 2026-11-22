@@ -710,7 +710,7 @@ app.get('/api/health',(_req,res)=>{
  });
 });
 app.use(express.static(path.join(ROOT,'public'),{index:'index.html',dotfiles:'deny',setHeaders:(res,filePath)=>{
- const isPrivatePage=/[/\\\\](account|order|checkout)[/\\\\]index\\.html$/.test(filePath);
+ const isPrivatePage=['account','order','checkout'].some(dir=>filePath.endsWith(path.join('public',dir,'index.html')));
  res.setHeader('Cache-Control',isPrivatePage?'no-store, max-age=0':'public, max-age=300');
 }}));
 app.get('*',(_req,res)=>res.sendFile(path.join(ROOT,'public','index.html')));
