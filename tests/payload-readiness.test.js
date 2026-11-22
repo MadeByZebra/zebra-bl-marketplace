@@ -16,7 +16,7 @@ test('all six sealed scripts must decrypt to the recorded plaintext hash before 
  const records={};
  try{
   for(const item of products.filter(p=>!p.unavailable&&p.file)){
-   const source=Buffer.from('-- synthetic offline Lua fixture for '+item.id+'\nreturn true\n');
+   const source=Buffer.from(('-- synthetic offline Lua fixture for '+item.id+'\nreturn true\n').repeat(4));
    records[item.file]={bytes:source.length,sha256:contentSha(source)};
    writeFileSync(path.join(dir,item.file+'.sealed'),seal(source,key));
   }
