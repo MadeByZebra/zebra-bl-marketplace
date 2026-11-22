@@ -25,11 +25,11 @@ jobs:
                   ...options,redirect:'manual',signal:AbortSignal.timeout(25000),
                   headers:{Accept:'application/json',...(options.headers||{})}
                 });
-                let json=null;
-                if((response.headers.get('content-type')||'').includes('application/json')){
-                  json=await response.json();
-                }
-                return {status:response.status,json};
+                let json=null,text=null;
+                const type=response.headers.get('content-type')||'';
+                if(type.includes('application/json'))json=await response.json();
+                else if(type.includes('text/html'))text=await response.text();
+                return {status:response.status,json,text};
               }catch(error){last=error;if(attempt<2)await sleep(5000);}
             }
             throw new Error('Hosted app unreachable: '+(last?.name||'network_error'));
@@ -75,6 +75,23 @@ jobs:
             body:JSON.stringify({sku:'str-grinder',accepted_terms:true})
           });
           assert.equal(checkout.status,401,'Anonymous visitor bypassed authenticated checkout');
+          for(const [path,needle] of [
+            ['/checkout/?sku=str-grinder','id="completeCheckout"'],
+            ['/order/','id="orderNotice"'],
+            ['/account/','commerce-account']
+          ]){
+            const page=await request(path);
+            assert.equal(page.status,200,'New commerce page unreachable: '+path);
+            assert.ok(page.text?.includes(needle),'New commerce page missing actual content: '+path);
+            assert.ok(page.text?.includes('commerce.css'),'New commerce theme not served: '+path);
+          }
+          const anonymousOrder=await request('/api/order/cs_live_'+'A'.repeat(30));
+          assert.equal(anonymousOrder.status,401,'Anonymous visitor read a private order');
+          const anonymousFeedback=await request('/api/order/cs_live_'+'A'.repeat(30)+'/feedback',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({rating:5,comment:'unauthorized'})
+          });
+          assert.equal(anonymousFeedback.status,401,'Anonymous visitor submitted order feedback');
           const summary=[
             '### Hosted store smoke check',
             '- Mode: '+h.mode,
@@ -84,6 +101,8 @@ jobs:
             '- Six protected Lua payloads verified: yes',
             '- Unpaid payload/installer denied: yes',
             '- Anonymous paid checkout denied: yes',
+            '- Themed checkout, order and account pages: reachable',
+            '- Private order and feedback routes: anonymous access denied',
             '- Real payment was NOT attempted'
           ].join('\n');
           console.log(summary);
