@@ -1,0 +1,59 @@
+name: One-time BL Scripts deployed revision QA
+on:
+  push:
+    branches: [diagnostics/live-release-audit-20261121]
+permissions:
+  contents: read
+jobs:
+  check-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check exact Render revision and protected checkout routes (no charge)
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const origin='https://zebra-bl-marketplace.onrender.com';
+          async function req(path,options={}){
+            const res=await fetch(origin+path,{
+              ...options,
+              signal:AbortSignal.timeout(30000),
+              redirect:'manual',
+              headers:{Accept:'application/json',...(options.headers||{})}
+            });
+            let json=null;
+            if((res.headers.get('content-type')||'').includes('json')){
+              json=await res.json();
+            }
+            return {status:res.status,json};
+          }
+          let health;
+          for(let attempt=0;attempt<6;attempt++){
+            health=await req('/api/health');
+            if(health.status===200&&health.json?.deployed_git_commit==='c7f4bc2ad14e99757ade1693940144c968e9a54f')break;
+            await new Promise(resolve=>setTimeout(resolve,5000));
+          }
+          assert.equal(health.status,200);
+          assert.equal(health.json?.deployed_git_commit,'c7f4bc2ad14e99757ade1693940144c968e9a54f','Wrong deployed commit');
+          assert.equal(health.json?.mode,'test');
+          assert.equal(health.json?.stripe_api_ready,true);
+          assert.equal(health.json?.webhook_configured,true);
+          assert.equal(health.json?.postgres_ready,true);
+          assert.equal(health.json?.verified_script_count,6);
+          const store=await req('/api/store');
+          assert.equal(store.status,200);
+          assert.equal(store.json?.checkout_ready,false,'Public sandbox checkout must remain restricted');
+          assert.ok(store.json.catalog?.products?.every(x=>x.unavailable));
+          const blocked=await req('/api/loader/str-grinder?key=ZBL_'+'0'.repeat(56));
+          assert.equal(blocked.status,403);
+          const checkout=await req('/api/checkout',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({sku:'str-grinder',accepted_terms:true})
+          });
+          assert.equal(checkout.status,401);
+          const html=await fetch(origin+'/scripts/',{signal:AbortSignal.timeout(30000)}).then(x=>x.text());
+          assert.match(html,/id="checkoutNotice"/,'Missing new checkout hold notice');
+          console.log('PASS: deployed commit c7f4bc2, authorized sandbox Stripe and webhook, six private scripts, blocked unpaid/purchasing, checkout notice.');
+          console.log('NO customer payments were created.');
+          NODE
