@@ -20,6 +20,7 @@ import {shouldRetryUnrecordedCheckout,expireIncompleteCheckout} from './checkout
 import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.js';
 import {verifiedLiveProduct,liveReleaseReadiness} from './live-sales-release-gates.js';
 import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.js';
+import {stripeKeyMode,stripeKeyType} from './stripe-key-mode.js';
 import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
 import {rotateLicenseAtomically} from './license-rotation.js';
 import {reconcilePendingPurchases} from './purchase-reconciliation.js';
@@ -55,7 +56,7 @@ let stripeAuth='not_checked'; // Only status, never keys or account identifiers.
 let liveMerchant={ready:false,issues:['not_verified']};
 let liveMerchantLastChecked=0;
 let liveMerchantRequest=null;
-const configuredForLive=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_');
+const configuredForLive=()=>stripeKeyMode(process.env.STRIPE_SECRET_KEY)==='live';
 // Stripe can suspend a merchant after activation. Cache short merchant checks
 // instead of trusting the existence of a live secret key or a startup result.
 async function refreshLiveMerchant(force=false){
@@ -87,8 +88,9 @@ async function checkStripeOnStartup(){
     e?.statusCode===403?'forbidden':'temporarily_unavailable';
  }
  console.log('Stripe key diagnostic:',stripeAuth,'mode:',
-   process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')?'sandbox':
-   process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'invalid');
+   stripeKeyMode(process.env.STRIPE_SECRET_KEY)==='test'?'sandbox':
+   stripeKeyMode(process.env.STRIPE_SECRET_KEY)==='live'?'live':'invalid',
+   'key type:',stripeKeyType(process.env.STRIPE_SECRET_KEY)||'invalid');
  if(configuredForLive())console.log('Live Stripe merchant diagnostic:',liveMerchant.ready?'ready':'not_ready');
 }
 const usingPostgres=!!process.env.DATABASE_URL;
@@ -140,8 +142,8 @@ const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft
 const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
 const supportFormLimiter=rateLimit({windowMs:60*60*1000,limit:4,standardHeaders:'draft-7',legacyHeaders:false});
-const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
-const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env)&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
+const testMode=()=>stripeKeyMode(process.env.STRIPE_SECRET_KEY)==='test';
+const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&!!stripeKeyMode(process.env.STRIPE_SECRET_KEY)&&configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env)&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(
  testMode()?process.env.ENABLE_TEST_CHECKOUT==='1'&&sandboxEmails().length>0:
  process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'&&liveMerchant.ready&&liveReleaseReadiness(process.env).ready
@@ -210,7 +212,7 @@ function publicState(){
  catalog.bundles=catalog.bundles.map(p=>({...p,unavailable:!itemReadyForSale(byId[p.id])}));
  catalog.extras=catalog.extras.map(p=>({...p,unavailable:!itemReadyForSale(byId[p.id])}));
  return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),
-  mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',
+  mode:configuredForLive()?'live':testMode()?'test':'unconfigured',
   stripe_key_status:stripeAuth,email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',
   email_sender_mode:mailerMode(),email_provider_auth:providerAuth,checkout_message:checkoutStatus(),
   support_email:process.env.SUPPORT_EMAIL||null,catalog};
@@ -227,7 +229,7 @@ function validateOrigin(req,res,next){
  next();
 }
 async function grantFromStripe(session){
- const configuredMode=testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unknown';
+ const configuredMode=stripeKeyMode(process.env.STRIPE_SECRET_KEY)||'unknown';
  if(!checkoutModeMatches(session,configuredMode)||!['paid','no_payment_required'].includes(session.payment_status)||session.currency!=='usd')return false;
  const order=(await query('SELECT * FROM purchases WHERE session_id=$1',[session.id]))[0];
  if(!order||!byId[order.sku]||order.status==='revoked')return false;
@@ -634,7 +636,7 @@ app.get('/api/health',(_req,res)=>{
  res.json({
   ok:true,service:'zebra-store',checkout:checkoutReady()?'configured':'disabled',
   deployed_git_commit:/^[a-f0-9]{40}$/.test(process.env.RENDER_GIT_COMMIT||'')?process.env.RENDER_GIT_COMMIT:null,
-  mode:testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unconfigured',
+  mode:stripeKeyMode(process.env.STRIPE_SECRET_KEY)||'unconfigured',
   email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
   stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env),
   postgres_ready:usingPostgres,vault_ready:vaultReady,verified_script_count:Object.values(payloadReadiness.products).filter(v=>v==='verified').length,zflag_installer_ready:zflagInstallerReady,
