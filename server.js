@@ -18,6 +18,7 @@ import { validFreeCheckout } from './free-checkout.js';
 import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
+import {requiresSameOrigin,loaderRateLimitKey} from './loader-security.mjs';
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
 import {validateSupportRequest,supportEmailContent} from './support-request.js';
@@ -207,7 +208,11 @@ async function fetchUser(req){
  const rows=await query(`SELECT users.id,users.email FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.token_hash=$1 AND sessions.expires_at>$2`,[sha(token),now()]);return rows[0]||null;
 }
 async function requireUser(req,res,next){try{req.user=await fetchUser(req);if(!req.user)return res.status(401).json({error:'Sign in to continue.'});next();}catch(e){safeError(res,e);}}
-function validateOrigin(req,res,next){const origin=req.get('origin');if(origin&&origin!==SITE.origin)return res.status(403).json({error:'Invalid request origin.'});next();}
+function validateOrigin(req,res,next){
+ if(!requiresSameOrigin(req.method))return next();
+ const origin=req.get('origin');if(origin&&origin!==SITE.origin)return res.status(403).json({error:'Invalid request origin.'});
+ next();
+}
 async function grantFromStripe(session){
  const configuredMode=testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unknown';
  if(!checkoutModeMatches(session,configuredMode)||!['paid','no_payment_required'].includes(session.payment_status)||session.currency!=='usd')return false;
@@ -498,7 +503,8 @@ app.get('/api/receipt/:sessionId',requireUser,async(req,res)=>{
 });
 // Every paid item receives one active secret. The public launcher and source are different assets.
 const licenseLimiter=rateLimit({windowMs:15*60*1000,limit:15,standardHeaders:'draft-7',legacyHeaders:false});
-const loaderLimiter=rateLimit({windowMs:60*1000,limit:50,standardHeaders:'draft-7',legacyHeaders:false});
+const loaderLimiter=rateLimit({windowMs:60*1000,limit:50,standardHeaders:'draft-7',legacyHeaders:false,
+ keyGenerator:req=>loaderRateLimitKey(req.query?.key,req.ip)});
 async function entitlementIsPaid(userId,sku){
  // Test cards must never unlock real protected software for public visitors.
  if(testMode()){
