@@ -18,6 +18,7 @@ import { validFreeCheckout } from './free-checkout.js';
 import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js';
 import {shouldRetryUnrecordedCheckout,expireIncompleteCheckout} from './checkout-consistency.js';
 import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.js';
+import {verifiedLiveProduct,liveReleaseReadiness} from './live-sales-release-gates.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
 import {requiresSameOrigin,validLicenseKey,licenseRateLimitKey} from './loader-security.mjs';
@@ -139,7 +140,7 @@ const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
 const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env)&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(
  testMode()?process.env.ENABLE_TEST_CHECKOUT==='1'&&sandboxEmails().length>0:
- process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'&&liveMerchant.ready
+ process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'&&liveMerchant.ready&&liveReleaseReadiness(process.env).ready
 );
 const testCheckoutReady=()=>checkoutReady()&&testMode()&&process.env.ENABLE_TEST_CHECKOUT==='1';
 const quoteFor=(item,code)=>discountQuote(item,code,{freeCode:process.env.ZEBRA_FREE_PROMO_CODE||''});
@@ -183,6 +184,11 @@ function checkoutStatus(){
  if(!mailReady())return 'Customer email delivery is not configured. No charge was made.';
  if(mailerMode()==='resend_test_only'&&!testMode())return 'Customer email is restricted to testing; live checkout is unavailable.';
  if(!testMode()&&!emailValid(process.env.SUPPORT_EMAIL||''))return 'Shop support contact is not configured. No charge was made.';
+ if(configuredForLive()){
+  const gate=liveReleaseReadiness(process.env);
+  if(gate.reasons.includes('persistent_database_unconfirmed'))return 'Production database durability and backup are not confirmed. No payment was taken.';
+  if(gate.reasons.includes('no_runtime_verified_products'))return 'Products are awaiting real-client compatibility verification. No payment was taken.';
+ }
  if(!checkoutReady())return 'Payments are not available yet. No charge was made.';
  return null;
 }
@@ -190,6 +196,7 @@ function scriptReadyForSale(item){return productPayloadReady(payloadReadiness.pr
 function itemReadyForSale(item){
  if(!item||item.unavailable)return false;
  if(item.id==='checkout-test')return testCheckoutReady();
+ if(!testMode()&&!verifiedLiveProduct(item,process.env,includedIds))return false;
  if(item.id==='zflag-injector')return zflagInstallerReady&&checkoutReady();
  return scriptReadyForSale(item)&&checkoutReady();
 }
