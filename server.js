@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
 import { discountQuote } from './discounts.js';
 import { validFreeCheckout } from './free-checkout.js';
-import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js';
+import {verifyAndGrantStripeOrder,revokeForStripeChargeEvent} from './stripe-fulfillment.js';
 import {shouldRetryUnrecordedCheckout,expireIncompleteCheckout} from './checkout-consistency.js';
 import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.js';
 import {verifiedLiveProduct,liveReleaseReadiness} from './live-sales-release-gates.js';
@@ -248,36 +248,10 @@ function validateOrigin(req,res,next){
  next();
 }
 async function grantFromStripe(session){
- const configuredMode=stripeKeyMode(process.env.STRIPE_SECRET_KEY)||'unknown';
- if(!checkoutModeMatches(session,configuredMode)||!['paid','no_payment_required'].includes(session.payment_status)||session.currency!=='usd')return false;
- const order=(await query('SELECT * FROM purchases WHERE session_id=$1',[session.id]))[0];
- if(!order||!byId[order.sku]||order.status==='revoked')return false;
- if(session.client_reference_id!==order.user_id||session.metadata?.user_id!==order.user_id||session.metadata?.sku!==order.sku)return false;
- // Immutable purchase price: the order was created by our own server, so
- // later changes to catalog prices or retired coupons must not revoke buyers.
- if(!Number.isSafeInteger(Number(order.amount))||Number(order.amount)<0||
-    Number(session.amount_total)!==Number(order.amount))return false;
- if(order.amount===0){
-  // A zero-dollar order must be a completed Stripe Checkout with the exact
-  // server-issued 100%-off coupon and a matching one-account reservation.
-  const claimed=(await query('SELECT * FROM free_promo_redemptions WHERE user_id=$1 AND session_id=$2 AND sku=$3',
-    [order.user_id,session.id,order.sku]))[0];
-  if(!validFreeCheckout(session,order,claimed,configuredMode))return false;
-  await query(`UPDATE purchases SET status='paid',paid_at=COALESCE(paid_at,$1)
-    WHERE session_id=$2 AND status!='revoked'`,[now(),session.id]);
-  await query('UPDATE free_promo_redemptions SET redeemed_at=$1 WHERE user_id=$2 AND session_id=$3 AND redeemed_at IS NULL',
-    [now(),order.user_id,session.id]);
-  return true;
- }
- if(order.amount<50||session.payment_status!=='paid')return false;
- // Verify the charge has not already been refunded or disputed before granting access.
- if(!session.payment_intent)return false;
- const intent=await stripe.paymentIntents.retrieve(typeof session.payment_intent==='object'?session.payment_intent.id:session.payment_intent,{expand:['latest_charge']});
- const charge=intent.latest_charge;
- if(!charge||typeof charge==='string'||!paymentIntentMatches(session,order,intent,charge,configuredMode))return false;
- await query(`UPDATE purchases SET status='paid',payment_intent=$1,
-  paid_at=COALESCE(paid_at,$2) WHERE session_id=$3 AND status!='revoked'`,[intent.id,now(),session.id]);
- return true;
+ return verifyAndGrantStripeOrder({
+  session,configuredMode:stripeKeyMode(process.env.STRIPE_SECRET_KEY)||'unknown',
+  query,stripe,now
+ });
 }
 
 // Send a separate purchase confirmation after a verified payment. Stripe also
@@ -378,17 +352,7 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
     }
   }
   if(['charge.refunded','charge.dispute.created'].includes(evt.type)){
-    // Dispute events carry a charge ID, not a PaymentIntent. Retrieve the charge
-    // rather than silently failing to revoke purchases on disputes.
-    const ch=evt.type==='charge.refunded'?evt.data.object:
-      await stripe.charges.retrieve(typeof evt.data.object.charge==='string'?
-        evt.data.object.charge:evt.data.object.charge?.id);
-    const paymentIntent=typeof ch.payment_intent==='string'?ch.payment_intent:ch.payment_intent?.id;
-    if(paymentIntent){
-      await query(`UPDATE purchases SET status='revoked' WHERE payment_intent=$1`,[paymentIntent]);
-      // All issued licenses also stop working because entitlementIsPaid checks
-      // only active orders, in addition to checking Stripe on each payload fetch.
-    }
+   await revokeForStripeChargeEvent({event:evt,stripe,query});
   }
   res.sendStatus(200);
  }catch(e){console.error('Stripe webhook failure',e);res.sendStatus(500);}
