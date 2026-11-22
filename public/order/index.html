@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light"><meta name="theme-color" content="#000000">
+<meta name="description" content="BL Scripts verified order details and private license delivery.">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>Order and delivery — Zebra’s Shop</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="/shop.css?v=8">
+<link rel="stylesheet" href="/zebra-true-black-v8.css?v=2">
+<link rel="stylesheet" href="/commerce.css?v=20261122">
+<script src="/shop.js?v=20261121" defer></script>
+<script src="/order/order.js?v=20261122" defer></script>
+</head>
+<body class="zebra-v8 commerce-page order-page">
+<a class="skip-link" href="#order-main">Skip to order details</a>
+<header class="nav-shell"><div class="wrap nav"><a href="/" class="brand">ZEBRA’S SHOP <span class="commerce-brand-slash">/ BL SCRIPTS</span></a><nav class="nav-links"><a href="/scripts/">Scripts</a><a href="/account/">My Library</a><a href="/support/">Support</a></nav><div class="nav-actions"><button class="iconbtn" id="themeToggle" aria-label="Toggle theme">◐</button><span class="commerce-secure">◈ PRIVATE DELIVERY</span></div></div></header>
+<main class="commerce-shell wrap" id="order-main">
+ <aside class="commerce-summary">
+  <div class="commerce-kicker"><span class="commerce-brandmark">Z</span><span>BL SCRIPTS <b>BY ZEBRA</b></span><span class="commerce-stamp">ACCOUNT LINKED</span></div>
+  <p class="commerce-eyebrow">ORDER TOTAL</p><h1 class="commerce-price" id="orderTotal">—</h1>
+  <p class="commerce-subnote" id="orderSubnote">Verifying your order with the shop…</p>
+  <div class="commerce-item-summary"><span class="commerce-product-icon">⌘</span><div><strong id="summaryItemName">Your product</strong><small>Secure digital fulfillment</small></div><strong id="summaryItemPrice">—</strong></div>
+  <div class="commerce-totals"><div><span>Items</span><b id="orderItemCount">—</b></div><div><span>Payment status</span><b id="orderPaymentStatus">Checking</b></div><div class="commerce-total"><span>Amount</span><b id="orderDue">—</b></div></div>
+  <div class="commerce-help"><span class="commerce-product-icon">?</span><div><strong>Need help with your order?</strong><p>Can’t find a script or having trouble using it? We're here to help.</p><a href="/support/#contact">Open support request ↗</a></div></div>
+  <div class="commerce-footlinks"><a href="/terms/">Terms</a><a href="/privacy/">Privacy</a><a href="/account/">My Library</a></div>
+ </aside>
+ <section class="commerce-main">
+  <div class="commerce-steps" aria-label="Purchase progress"><span class="completed"><i>✓</i> Order information</span><span class="commerce-step-line"></span><span class="completed"><i>✓</i> Confirm &amp; pay</span><span class="commerce-step-line"></span><span class="active"><i>3</i> Receive your items</span></div>
+  <div class="commerce-heading">
+   <p class="commerce-eyebrow">03 / PRIVATE ORDER DELIVERY</p>
+   <div class="commerce-result-header"><span class="commerce-success-symbol" id="resultSymbol">◌</span><div><h2 id="resultTitle">Checking your order…</h2><p id="resultDescription">Only completed, server-verified purchases unlock products.</p></div></div>
+  </div>
+  <div class="commerce-notice" id="orderNotice" role="status" aria-live="polite">Checking payment and account ownership…</div>
+  <section class="commerce-card" id="orderSignIn" hidden>
+   <header class="commerce-card-head"><div><span class="commerce-eyebrow">ACCOUNT REQUIRED</span><h3>Verify your email to view this order</h3></div></header>
+   <p class="commerce-muted">Use the same email address you used before purchasing. Order references alone do not grant access.</p>
+   <form class="commerce-form" id="orderEmailForm"><label for="orderEmail">EMAIL ADDRESS</label><div class="commerce-fieldrow"><input id="orderEmail" type="email" autocomplete="email" required maxlength="254" placeholder="you@example.com"><button class="commerce-button" type="submit" id="orderSend">Send code</button></div></form>
+   <form class="commerce-form" id="orderCodeForm" hidden><label for="orderCode">SIX-DIGIT CODE</label><div class="commerce-fieldrow"><input id="orderCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"><button class="commerce-button" type="submit" id="orderVerify">Verify</button></div><button type="button" id="orderChange" class="commerce-textlink">Change email</button></form>
+   <p class="commerce-inline-status" id="orderAuthStatus" role="status" aria-live="polite"></p>
+  </section>
+  <section class="commerce-card" id="deliveriesCard" hidden>
+   <header class="commerce-card-head"><div><span class="commerce-eyebrow">DELIVERED ITEMS</span><h3>Your products</h3></div><span class="commerce-pill commerce-pill-success">✓ VERIFIED PURCHASE</span></header>
+   <div id="deliveredItems"></div>
+   <p class="commerce-muted commerce-delivery-note">Personal loaders include a license key. Do not share them. Generating a new loader rotates and disables the previous key. Source code is not provided by public GitHub links.</p>
+  </section>
+  <section class="commerce-card" id="reviewCard" hidden>
+   <header class="commerce-card-head"><div><span class="commerce-eyebrow">OPTIONAL FEEDBACK</span><h3>How was your experience?</h3></div><span class="commerce-pill">REAL BUYERS ONLY</span></header>
+   <p class="commerce-muted">Feedback is private to the shop owner and is never auto-generated or posted on your behalf.</p>
+   <form id="reviewForm" class="commerce-form">
+    <label for="reviewRating">YOUR RATING</label>
+    <select id="reviewRating" required><option value="">Choose a rating</option><option value="5">★★★★★ · Excellent</option><option value="4">★★★★☆ · Good</option><option value="3">★★★☆☆ · Okay</option><option value="2">★★☆☆☆ · Needs improvement</option><option value="1">★☆☆☆☆ · Poor</option></select>
+    <label for="reviewMessage">MESSAGE (OPTIONAL)</label><textarea id="reviewMessage" maxlength="1200" rows="4" placeholder="What went well? What should we improve?"></textarea>
+    <button class="commerce-button commerce-secondary" type="submit" id="submitReview">Save private feedback ↗</button>
+   </form>
+   <p class="commerce-inline-status" id="reviewStatus" role="status" aria-live="polite"></p>
+  </section>
+  <section class="commerce-card" id="orderDetailsCard" hidden>
+   <header class="commerce-card-head"><div><span class="commerce-eyebrow">ORDER INFORMATION</span><h3>Transaction details</h3></div><span class="commerce-pill">ACCOUNT PRIVATE</span></header>
+   <dl class="commerce-detail-list"><div><dt>Order reference</dt><dd id="detailOrderId" class="commerce-break">—</dd></div><div><dt>Payment method</dt><dd>Secure Stripe Checkout</dd></div><div><dt>Customer account</dt><dd id="detailEmail">—</dd></div><div><dt>Total</dt><dd id="detailTotal">—</dd></div><div><dt>Order date</dt><dd id="detailDate">—</dd></div><div><dt>Status</dt><dd id="detailStatus">—</dd></div></dl>
+   <div class="commerce-actions"><a id="receiptLink" href="/account/" class="commerce-button commerce-secondary" target="_blank" rel="noopener noreferrer" hidden>Open Stripe receipt ↗</a><a href="/account/" class="commerce-button commerce-secondary">Go to My Library ↗</a></div>
+  </section>
+  <footer class="commerce-bottom">Your digital purchases are verified on the server. <a href="/support/">Support Center</a></footer>
+ </section>
+</main>
+</body></html>
