@@ -75,6 +75,20 @@ jobs:
             body:JSON.stringify({sku:'str-grinder',accepted_terms:true})
           });
           assert.equal(checkout.status,401,'Anonymous visitor bypassed authenticated checkout');
+          const forgedStripeWebhook=await request('/api/stripe/webhook',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              id:'evt_untrusted_no_signature',livemode:true,
+              type:'checkout.session.completed',
+              data:{object:{id:'cs_live_untrusted',payment_status:'paid'}}
+            })
+          });
+          assert.equal(forgedStripeWebhook.status,400,'Unsigned Stripe webhook was accepted');
+          const anonymousLibrary=await request('/api/library');
+          assert.equal(anonymousLibrary.status,401,'Anonymous buyer could access library');
+          const invalidLoader=await request('/api/loader/str-grinder?key=ZBL_'+'f'.repeat(56));
+          assert.equal(invalidLoader.status,403,'Unknown forged license unexpectedly unlocked software');
+
           for(const [path,needle] of [
             ['/checkout/?sku=str-grinder','id="completeCheckout"'],
             ['/order/','id="orderNotice"'],
@@ -101,6 +115,8 @@ jobs:
             '- Six protected Lua payloads verified: yes',
             '- Unpaid payload/installer denied: yes',
             '- Anonymous paid checkout denied: yes',
+            '- Unsigned Stripe payment notification rejected: yes',
+            '- Private library and forged license access denied: yes',
             '- Themed checkout, order and account pages: reachable',
             '- Private order and feedback routes: anonymous access denied',
             '- Real payment was NOT attempted'
