@@ -6,6 +6,12 @@ on:
   schedule:
     - cron: '17 14 * * *'
   workflow_dispatch:
+  # Safely attempt the first backup when this reviewed workflow reaches main.
+  # Any missing private secret fails closed before reading customer records.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/encrypted-neon-backup.yml'
 
 permissions:
   contents: read
@@ -16,7 +22,7 @@ concurrency:
 
 jobs:
   encrypted-backup:
-    if: github.repository == 'MadeByZebra/zebra-bl-marketplace'
+    if: github.repository == 'MadeByZebra/zebra-bl-marketplace' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
