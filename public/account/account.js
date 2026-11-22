@@ -135,7 +135,7 @@
         });
         download.addEventListener('click',()=>{
           if(!area.value)return;
-          const blob=new Blob([area.value+'\\n'],{type:'text/plain;charset=utf-8'});
+          const blob=new Blob([area.value+'\n'],{type:'text/plain;charset=utf-8'});
           const url=URL.createObjectURL(blob);
           try{
             const a=element('a');a.href=url;a.download='ZBL_'+sku+'_personal_loadstring.txt';
@@ -147,7 +147,9 @@
         row.append(result);
       }
       row.prepend(info);
-      row.insertBefore(controls,row.children.length&&row.lastElementChild?.classList.contains('commerce-loader-card')?row.lastElementChild:null);
+      const output=row.querySelector('.commerce-loader-card');
+      if(output)row.insertBefore(controls,output);
+      else row.append(controls);
       productsSection.append(row);
     }
     const history=header('Order history',orders.length);
