@@ -16,6 +16,7 @@ import { products, bundles, extraProducts, byId, includedIds, publicCatalog } fr
 import { discountQuote } from './discounts.js';
 import { validFreeCheckout } from './free-checkout.js';
 import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js';
+import {shouldRetryUnrecordedCheckout,expireIncompleteCheckout} from './checkout-consistency.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
 import {requiresSameOrigin,validLicenseKey,licenseRateLimitKey} from './loader-security.mjs';
@@ -298,7 +299,7 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
       // Stripe may send the webhook before our Checkout order insert finishes.
       // Retry delivery instead of acknowledging an order we cannot yet fulfill.
       const recorded=await query('SELECT session_id FROM purchases WHERE session_id=$1',[session.id]);
-      if(!recorded.length&&session.metadata?.sku&&session.metadata?.user_id){
+      if(shouldRetryUnrecordedCheckout(session,recorded)){
         throw new Error('Checkout order is not recorded yet; retry webhook delivery');
       }
       if(recorded.length&&await grantFromStripe(session)){
@@ -474,10 +475,7 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
  }catch(e){
   // Never leave a payable Stripe URL open when our database rejected the order.
   // This cleanup is best-effort; failed expiry must be visible to the operator.
-  if(unfinishedSessionId){
-   try{await stripe.checkout.sessions.expire(unfinishedSessionId);}
-   catch(expiryError){console.error('Failed to expire incomplete Checkout Session:',expiryError?.code||'unknown');}
-  }
+  if(unfinishedSessionId)await expireIncompleteCheckout(stripe,unfinishedSessionId);
   if(freeReservation)await query('DELETE FROM free_promo_redemptions WHERE user_id=$1 AND session_id=$2',[req.user.id,freeReservation]).catch(()=>{});
   safeError(res,e);
  }
