@@ -6,6 +6,8 @@ import {checkoutOrderPrefix,checkoutOrderMatchesMode} from '../stripe-order-mode
 test('configured Stripe server key determines test versus live order namespace',()=>{
  assert.equal(checkoutOrderPrefix('sk_test_example'),'cs_test_');
  assert.equal(checkoutOrderPrefix('sk_live_example'),'cs_live_');
+ assert.equal(checkoutOrderPrefix('rk_live_example'),'cs_live_');
+ assert.equal(checkoutOrderPrefix('rk_test_example'),'cs_test_');
  assert.equal(checkoutOrderPrefix('pk_live_publishable'),null);
  assert.equal(checkoutOrderPrefix(''),null);
  assert.equal(checkoutOrderPrefix(null),null);
