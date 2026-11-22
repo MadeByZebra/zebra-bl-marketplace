@@ -6,10 +6,10 @@
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="same-origin">
 <title>My Library — Zebra’s Shop</title><link rel="icon" href="data:,">
 <link rel="stylesheet" href="/shop.css?v=8"><link rel="stylesheet" href="/zebra-true-black-v8.css?v=2">
-<link rel="stylesheet" href="/commerce.css?v=20261122">
+<link rel="stylesheet" href="/commerce.css?v=20261122-silver2">
 <link rel="stylesheet" href="/zebra-chat.css">
 <script src="/shop.js?v=20261121" defer></script>
-<script src="/account/account.js?v=20261122" defer></script>
+<script src="/account/account.js?v=20261122-silver2" defer></script>
 <script src="/smooth-scroll.js?v=20261121v21" defer></script>
 </head>
 <body class="zebra-v8 commerce-page commerce-account account-page">
@@ -19,7 +19,7 @@
  <aside class="commerce-summary">
   <div class="commerce-kicker"><span class="commerce-brandmark">Z</span><span>BL SCRIPTS <b>BY ZEBRA</b></span><span class="commerce-stamp">PRIVATE ACCESS</span></div>
   <p class="commerce-eyebrow">YOUR PERSONAL WORKSPACE</p>
-  <h1 class="commerce-price">My Library<span style="color:#b8a3fc">.</span></h1>
+  <h1 class="commerce-price">My Library<span class="commerce-title-dot">.</span></h1>
   <p class="commerce-subnote">Verified purchases, personal loadstrings, official receipts and order history in one place.</p>
   <div class="commerce-item-summary"><span class="commerce-product-icon">⌘</span><div><strong>Private digital delivery</strong><small>One account · All purchased tools</small></div></div>
   <div class="account-side-list"><div><b>✓</b> Verified purchase records</div><div><b>✓</b> On-demand personal license keys</div><div><b>✓</b> Individual order details &amp; receipts</div><div><b>✓</b> Secure email sign-in</div></div>
@@ -27,7 +27,7 @@
   <div class="commerce-footlinks"><a href="/terms/">Terms &amp; refunds</a><a href="/privacy/">Privacy</a><a href="/scripts/">Browse tools</a></div>
  </aside>
  <section class="commerce-main">
-  <div class="commerce-steps"><span class="completed"><i>✓</i> Explore products</span><span class="commerce-step-line"></span><span class="completed"><i>✓</i> Your account</span><span class="commerce-step-line"></span><span class="active"><i>3</i> Private library</span></div>
+  <nav class="commerce-account-nav" aria-label="Your account sections"><span class="active">ACCOUNT</span><span>YOUR PRODUCTS</span><span>ORDER HISTORY</span></nav>
   <div class="commerce-heading"><span class="commerce-eyebrow">ACCOUNT / DIGITAL FULFILLMENT</span><h2>Everything you own.<br><span style="color:var(--commerce-muted)">One place.</span></h2><p>Access is only granted after the server verifies your purchase with Stripe.</p></div>
   <div class="account-panel" id="accountInfo">
    <span class="commerce-eyebrow">PRIVATE ACCOUNT</span>
@@ -47,16 +47,18 @@
    </div>
    <div id="signedIn" hidden>
     <div class="commerce-signed-in"><span class="commerce-success-symbol">✓</span><div><strong>Signed in securely</strong><p id="signedInEmail"></p></div><a href="/scripts/">Shop ↗</a></div>
-    <div id="libraryItems" style="margin-top:20px"></div>
-    <div id="loaderResult" aria-live="polite"></div>
+    <div class="commerce-library-contents" id="libraryItems" aria-live="polite"></div>
+    <div id="loaderResult" aria-live="polite" class="commerce-license-result"></div>
     <button class="btn" id="signOut" type="button" style="margin-top:22px">Sign out</button>
    </div>
-   <p id="accountStatus" class="account-alert" aria-live="polite"></p>
+   <p id="accountStatus" class="account-alert" role="status" aria-live="polite"></p>
   </div>
   <div class="commerce-bottom">Always keep your personal loadstrings private. <a href="/support/">Support Center</a></div>
  </section>
-<aside class="zebra-inline-support-cta" aria-label="Zebra Shop customer support"><div><strong>Need help with an order or a product?</strong><p>Our support center can help with purchases, compatibility, refunds and delivery. Never share card details or sign-in codes.</p></div><div class="zebra-inline-support-actions"><a class="zebra-inline-email" href="/support/#contact" data-zebra-email-support>Email Support ↗</a><a href="/support/">Support Center ↗</a></div></aside>
 </main>
+<div class="commerce-account-support wrap">
+<aside class="zebra-inline-support-cta" aria-label="Zebra Shop customer support"><div><strong>Need help with an order or a product?</strong><p>Our support center can help with purchases, compatibility, refunds and delivery. Never share card details or sign-in codes.</p></div><div class="zebra-inline-support-actions"><a class="zebra-inline-email" href="/support/#contact" data-zebra-email-support>Email Support ↗</a><a href="/support/">Support Center ↗</a></div></aside>
+</div>
 <footer class="footer"><div class="wrap footer-inner"><a class="brand" href="/">ZEBRA’S SHOP</a><div class="footer-links"><a href="/scripts/">BL Scripts</a><a href="/account/">My Library</a><a href="/support/">Support</a></div></div><div class="zebra-footer-help"><a href="/support/#contact" class="zebra-footer-email-link" data-zebra-email-support>Email Support ↗</a><a href="/privacy/">Privacy Policy</a><a href="/terms/">Terms &amp; Refunds</a></div></footer>
 <script src="/zebra-support-chat.js?v=20261121v1" defer></script>
 </body></html>
