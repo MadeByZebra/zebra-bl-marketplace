@@ -33,6 +33,7 @@ import {validateSupportRequest,supportEmailContent} from './support-request.js';
 import {registerZebraChat} from './zebra-chat-server.js';
 import {marketplaceSchema} from './marketplace-schema.js';
 import {migrateMarketplaceDatabase} from './neon-migration.js';
+import {runUnpaidLiveCheckoutPreflight} from './live-launch-preflight.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -55,6 +56,7 @@ const zflagInstallerReady=verifyZflagInstaller();
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 const webSecret=()=>webhookSecretFor(process.env.STRIPE_SECRET_KEY,process.env);
 let stripeAuth='not_checked'; // Only status, never keys or account identifiers.
+let unpaidLivePreflight={mode:'not_run',issues:[]};
 let liveMerchant={ready:false,issues:['not_verified']};
 let liveMerchantLastChecked=0;
 let liveMerchantRequest=null;
@@ -655,7 +657,7 @@ app.get('/api/health',(_req,res)=>{
   email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
   stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env),
   postgres_ready:usingPostgres,database_backend:neonCutoverEnabled?'neon':'render',
-  neon_migration_status:neonMigrationStatus,vault_ready:vaultReady,verified_script_count:Object.values(payloadReadiness.products).filter(v=>v==='verified').length,zflag_installer_ready:zflagInstallerReady,
+  neon_migration_status:neonMigrationStatus,unpaid_live_preflight:unpaidLivePreflight,vault_ready:vaultReady,verified_script_count:Object.values(payloadReadiness.products).filter(v=>v==='verified').length,zflag_installer_ready:zflagInstallerReady,
    live_merchant_ready:configuredForLive()&&liveMerchant.ready,
   disabled_by_owner:process.env.DISABLE_CHECKOUT==='1',
   sandbox_testers_configured:sandboxEmails().length>0,
@@ -669,6 +671,25 @@ bootstrapDatabase().then(async()=>{
   checkProviderOnStartup().catch(()=>console.warn('Email provider diagnostic unavailable')),
   checkStripeOnStartup().catch(()=>console.warn('Stripe key diagnostic unavailable'))
  ]);
+ // Only an explicit one-time operator flag runs this harmless prelaunch
+ // smoke. Never enable real customer charges for this diagnostic.
+ if(process.env.RUN_UNPAID_PREFLIGHT==='1'){
+  if(configuredForLive()&&stripeAuth==='authorized'&&process.env.ALLOW_LIVE_SALES!=='1'&&providerAuth==='authorized'){
+   try{
+    unpaidLivePreflight=await runUnpaidLiveCheckoutPreflight({
+     stripe,sendMail:sendShopEmail,supportEmail:process.env.SUPPORT_EMAIL,
+     siteUrl:SITE.origin
+    });
+    console.log('Unpaid Stripe launch preflight:',JSON.stringify(unpaidLivePreflight));
+   }catch(_error){
+    unpaidLivePreflight={mode:'failed',issues:['unexpected_preflight_error']};
+    console.warn('Unpaid Stripe launch preflight: failed');
+   }
+  }else {
+   unpaidLivePreflight={mode:'blocked',issues:['requires_authorized_live_key_email_and_locked_charges']};
+   console.warn('Unpaid Stripe launch preflight: blocked by safety preconditions');
+  }
+ }
  console.log('Protected script integrity:',Object.values(payloadReadiness.products).filter(v=>v==='verified').length,'of 6');
  console.log('ZFLAG approved installer:',zflagInstallerReady?'verified':'not_available');
  app.listen(PORT,'0.0.0.0',()=>{
