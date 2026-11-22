@@ -45,7 +45,7 @@ test('test-only purchase has hard test-mode gate and minimum $0.50 amount',()=>{
  assert.match(server,/ENABLE_TEST_CHECKOUT/);
  assert.match(server,/testMode\(\)/);
  assert.match(server,/item\.price<50/);
- assert.match(server,/sku==='checkout-test'&&!testCheckoutReady\(\)/);
+ assert.match(server,/item.id==='checkout-test'\)return testCheckoutReady\(\)/);
  assert.match(server,/\.webhooks\.constructEvent/);
  assert.match(server,/session\.payment_status!=='paid'/);
 });
