@@ -7,7 +7,8 @@ import { Pool } from 'pg';
 import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual, randomInt } from 'node:crypto';
 import fs from 'node:fs';
-import {readSealed,hasSealed} from './vault.js';
+import {readSealed,hasSealed,contentSha} from './vault.js';
+import {inspectPrivatePayloads,productPayloadReady,readVerifiedScript} from './payload-readiness.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { products, bundles, extraProducts, byId, includedIds, publicCatalog } from './catalog.js';
@@ -26,6 +27,19 @@ const PORT=Number(process.env.PORT||3000);
 const SITE=new URL(process.env.PUBLIC_URL||`http://localhost:${PORT}`);
 const LIVE=process.env.NODE_ENV==='production';
 const SCRIPT_DIR=path.resolve(ROOT,process.env.SCRIPT_STORAGE_DIR||'sealed-payloads');
+const PAYLOAD_MANIFEST=path.join(ROOT,'sealed-payloads','MANIFEST.json');
+const payloadReadiness=inspectPrivatePayloads(SCRIPT_DIR,{manifestPath:PAYLOAD_MANIFEST});
+// Do not sell an installer merely because a file exists. Require a Windows PE
+// header, owner-approved SHA-256, and a successfully decrypted private asset.
+function verifyZflagInstaller(){
+ const expected=String(process.env.ZFLAG_APPROVED_SHA256||'').trim().toLowerCase();
+ if(!/^[a-f0-9]{64}$/.test(expected)||!hasSealed(SCRIPT_DIR,'zflag-setup.exe'))return false;
+ try{
+  const bin=readSealed(SCRIPT_DIR,'zflag-setup.exe');
+  return bin.length>100000&&bin[0]===77&&bin[1]===90&&contentSha(bin)===expected;
+ }catch(_e){return false;}
+}
+const zflagInstallerReady=verifyZflagInstaller();
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 const webSecret=process.env.STRIPE_WEBHOOK_SECRET;
 let stripeAuth='not_checked'; // Only status, never keys or account identifiers.
@@ -140,7 +154,24 @@ function checkoutStatus(){
  if(!checkoutReady())return 'Payments are not available yet. No charge was made.';
  return null;
 }
-function publicState(){const catalog=publicCatalog();catalog.extras=catalog.extras.map(p=>p.id==='checkout-test'?{...p,unavailable:!testCheckoutReady()}:p.id==='zflag-injector'?{...p,unavailable:!hasSealed(SCRIPT_DIR,'zflag-setup.exe')||!checkoutReady()}:p);return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',stripe_key_status:stripeAuth,email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,checkout_message:checkoutStatus(),support_email:process.env.SUPPORT_EMAIL||null,catalog};}
+function scriptReadyForSale(item){return productPayloadReady(payloadReadiness.products,item,includedIds);}
+function itemReadyForSale(item){
+ if(!item||item.unavailable)return false;
+ if(item.id==='checkout-test')return testCheckoutReady();
+ if(item.id==='zflag-injector')return zflagInstallerReady&&checkoutReady();
+ return scriptReadyForSale(item)&&checkoutReady();
+}
+function publicState(){
+ const catalog=publicCatalog();
+ catalog.products=catalog.products.map(p=>({...p,unavailable:!itemReadyForSale(byId[p.id])}));
+ catalog.bundles=catalog.bundles.map(p=>({...p,unavailable:!itemReadyForSale(byId[p.id])}));
+ catalog.extras=catalog.extras.map(p=>({...p,unavailable:!itemReadyForSale(byId[p.id])}));
+ return {checkout_ready:checkoutReady(),test_checkout_ready:testCheckoutReady(),
+  mode:process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':testMode()?'test':'unconfigured',
+  stripe_key_status:stripeAuth,email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',
+  email_sender_mode:mailerMode(),email_provider_auth:providerAuth,checkout_message:checkoutStatus(),
+  support_email:process.env.SUPPORT_EMAIL||null,catalog};
+}
 function safeError(res,err,code=500){console.error(err);return res.status(code).json({error:'Request could not be completed.'});}
 async function fetchUser(req){
  const token=parseCookie(req.headers.cookie,'bl_session');if(!token||!/^[a-f0-9]{64}$/.test(token))return null;
@@ -277,13 +308,23 @@ app.post('/api/support/request',supportFormLimiter,async(req,res)=>{
 app.get('/api/store',async(req,res)=>{
  try{
   const state=publicState();
-  if(testMode()&&state.checkout_ready){
+  if(testMode()){
    const user=await fetchUser(req);
-   if(!isSandboxTester(user?.email)){
+   const approved=isSandboxTester(user?.email);
+   if(!approved&&state.checkout_ready){
     state.checkout_ready=false;
     state.test_checkout_ready=false;
-    state.checkout_message='Stripe is in an owner-only sandbox. Public purchases are not available yet; no real charge will be made.';
+    state.checkout_message='This shop is in Stripe sandbox testing. Only approved test accounts can check out. No real money is charged.';
    }
+   // No public sandbox sales or free script access. Protected script QA is
+   // possible only for an approved tester and an explicit server-side toggle.
+   const scriptsAllowed=approved&&process.env.ENABLE_TEST_SOFTWARE_DELIVERY==='1';
+   if(!scriptsAllowed){
+    state.catalog.products=state.catalog.products.map(p=>({...p,unavailable:true}));
+    state.catalog.bundles=state.catalog.bundles.map(p=>({...p,unavailable:true}));
+   }
+   state.catalog.extras=state.catalog.extras.map(p=>({...p,
+    unavailable:p.id!=='checkout-test'||!approved||!state.test_checkout_ready}));
   }
   res.json(state);
  }catch(e){safeError(res,e);}
@@ -348,7 +389,7 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
  if(testMode()&&!mayCheckoutSandbox({email:req.user.email,sku:String(req.body?.sku||'')}))
   return res.status(403).json({error:'Stripe sandbox is restricted to approved testers. No real money was charged.'});
  if(req.body?.accepted_terms!==true)return res.status(400).json({error:'Please accept store terms before purchase.'});
- const sku=String(req.body?.sku||''),item=byId[sku];if(!item||!Number.isInteger(item.price)||item.price<50||item.unavailable&&sku!=='checkout-test'||sku==='checkout-test'&&!testCheckoutReady()||sku!=='checkout-test'&&includedIds(item).some(id=>{const entry=byId[id];return !entry?.file||!hasSealed(SCRIPT_DIR,entry.file);}))return res.status(400).json({error:'Product is not available for paid checkout yet.'});
+ const sku=String(req.body?.sku||''),item=byId[sku];if(!item||!Number.isInteger(item.price)||item.price<50||!itemReadyForSale(item))return res.status(400).json({error:'This product has not passed delivery verification yet. No payment was taken.'});
  const quote=quoteFor(item,req.body?.discount_code);
  if(!quote.ok)return res.status(400).json({error:quote.error});
  // A $0 checkout must use a Stripe coupon and receive an actual completed
@@ -445,7 +486,7 @@ async function entitlementIsPaid(userId,sku){
 // Buyer rotates license as needed; full key is deliberately never kept in our database.
 app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
  const sku=String(req.params.sku);
- if(!products.some(p=>p.id===sku&&!p.unavailable))return res.sendStatus(404);
+ if(!products.some(p=>p.id===sku&&!p.unavailable)||payloadReadiness.products[sku]!=='verified')return res.sendStatus(404);
  try{
   if(!await entitlementIsPaid(req.user.id,sku))return res.status(403).json({error:'Verified purchase required. No license was issued.'});
   const key='ZBL_'+randomBytes(28).toString('hex');
@@ -457,13 +498,13 @@ app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
 // Runtime licenses do not use browser cookies. Every delivery verifies the paid account.
 app.get('/api/loader/:sku',loaderLimiter,async(req,res)=>{
  const sku=String(req.params.sku),key=String(req.query.key||'');
- if(!products.some(p=>p.id===sku&&!p.unavailable)||!/^ZBL_[a-f0-9]{56}$/.test(key))return res.sendStatus(403);
+ if(!products.some(p=>p.id===sku&&!p.unavailable)||payloadReadiness.products[sku]!=='verified'||!/^ZBL_[a-f0-9]{56}$/.test(key))return res.sendStatus(403);
  try{
   const found=(await query('SELECT * FROM licenses WHERE token_hash=$1 AND sku=$2 AND revoked_at IS NULL',[sha(key),sku]))[0];
   if(!found||!await entitlementIsPaid(found.user_id,sku))return res.sendStatus(403);
   const item=products.find(p=>p.id===sku);
   if(!hasSealed(SCRIPT_DIR,item.file))return res.sendStatus(503);
-  const payload=readSealed(SCRIPT_DIR,item.file);
+  const payload=readVerifiedScript(SCRIPT_DIR,item.file,PAYLOAD_MANIFEST);
   await query('UPDATE licenses SET last_used_at=$1 WHERE id=$2',[now(),found.id]);
   res.set({'Referrer-Policy':'no-referrer','Content-Type':'text/plain; charset=utf-8','Cache-Control':'private, no-store, max-age=0','X-Robots-Tag':'noindex, nofollow','Content-Disposition':'inline'});
   res.send(payload);
@@ -473,7 +514,7 @@ app.get('/api/loader/:sku',loaderLimiter,async(req,res)=>{
 app.get('/api/injector/download',downloadLimiter,requireUser,async(req,res)=>{
  try{
   if(!await entitlementIsPaid(req.user.id,'zflag-injector'))return res.status(403).json({error:'Verified ZFLAG purchase required.'});
-  if(!hasSealed(SCRIPT_DIR,'zflag-setup.exe'))return res.status(503).json({error:'Updated installer has not been supplied yet.'});
+  if(!zflagInstallerReady)return res.status(503).json({error:'Updated checksum-verified ZFLAG installer is not available yet.'});
   const binary=readSealed(SCRIPT_DIR,'zflag-setup.exe');
   res.set({'Cache-Control':'private,no-store','Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="ZFLAG_Setup.exe"','X-Robots-Tag':'noindex','Content-Length':String(binary.length)});
   res.end(binary);
@@ -482,14 +523,13 @@ app.get('/api/injector/download',downloadLimiter,requireUser,async(req,res)=>{
 // Legacy direct downloads are intentionally disabled: buyers receive loaders only.
 app.get('/api/download/:sku',(_req,res)=>res.status(410).json({error:'Raw downloads are disabled. Open My Library and generate your licensed loadstring.'}));
 app.get('/api/health',(_req,res)=>{
- const vaultReady=!!process.env.ZEBRA_PAYLOAD_KEY&&
-  products.filter(p=>!p.unavailable).every(p=>p.file&&hasSealed(SCRIPT_DIR,p.file));
+ const vaultReady=payloadReadiness.ready;
  res.json({
   ok:true,service:'zebra-store',checkout:checkoutReady()?'configured':'disabled',
   mode:testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unconfigured',
   email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
   stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:/^whsec_/.test(webSecret||''),
-  postgres_ready:usingPostgres,vault_ready:vaultReady,
+  postgres_ready:usingPostgres,vault_ready:vaultReady,verified_script_count:Object.values(payloadReadiness.products).filter(v=>v==='verified').length,zflag_installer_ready:zflagInstallerReady,
   disabled_by_owner:process.env.DISABLE_CHECKOUT==='1',
   sandbox_testers_configured:sandboxEmails().length>0,
   sandbox_script_delivery_enabled:testMode()&&process.env.ENABLE_TEST_SOFTWARE_DELIVERY==='1'
@@ -502,6 +542,8 @@ init().then(async()=>{
   checkProviderOnStartup().catch(()=>console.warn('Email provider diagnostic unavailable')),
   checkStripeOnStartup().catch(()=>console.warn('Stripe key diagnostic unavailable'))
  ]);
+ console.log('Protected script integrity:',Object.values(payloadReadiness.products).filter(v=>v==='verified').length,'of 6');
+ console.log('ZFLAG approved installer:',zflagInstallerReady?'verified':'not_available');
  app.listen(PORT,'0.0.0.0',()=>console.log(`BL Scripts Marketplace at ${SITE.origin}; checkout ${checkoutReady()?'READY':'LOCKED'}`));
 }).catch(e=>{console.error('Database initialization failed',e);process.exit(1);});
 export {app,checkoutReady,grantFromStripe};
