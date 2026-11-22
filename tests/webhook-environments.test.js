@@ -22,7 +22,7 @@ test('live Stripe key cannot use generic or test webhook secrets',()=>{
  assert.equal(configuredWebhookSecret('sk_live_example',{...e,STRIPE_LIVE_WEBHOOK_SECRET:mockSecret('liveSecret123')}),true);
 });
 test('invalid and missing secrets are rejected in all modes',()=>{
- for(const x of ['',null,'rk_live_restricted','pk_live_public'])assert.equal(webhookSecretFor(x,{STRIPE_LIVE_WEBHOOK_SECRET:mockSecret('example')}),'');
+ for(const x of ['',null,'rk_invalid_restricted','pk_live_public'])assert.equal(webhookSecretFor(x,{STRIPE_LIVE_WEBHOOK_SECRET:mockSecret('example')}),'');
  for(const s of ['','not-a-webhook-secret','whsec_','whsec_x@malformed'])
   assert.equal(configuredWebhookSecret('sk_live_example',{STRIPE_LIVE_WEBHOOK_SECRET:s}),false);
 });
