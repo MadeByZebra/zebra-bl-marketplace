@@ -39,13 +39,26 @@ jobs:
           const h=health.json;
           assert.equal(h?.service,'zebra-store');
           assert.equal(h?.postgres_ready,true,'Persistent DB connection missing');
-          assert.equal(h?.webhook_configured,true,'Stripe webhook signature secret missing');
+          // A revoked/malformed key must fail closed. The webhook readiness
+          // assertion is required only when the server has a configured
+          // payment mode or if the shop claims Checkout is available.
+          assert.ok(['test','live','unconfigured'].includes(h?.mode),'Unknown payment mode');
           assert.equal(h?.verified_script_count,6,'Sealed script integrity check failed');
           const store=await request('/api/store');
           assert.equal(store.status,200,'Catalog endpoint did not respond');
           assert.ok(Array.isArray(store.json?.catalog?.products));
           assert.equal(typeof store.json.checkout_ready,'boolean');
           assert.equal(store.json.mode,h.mode,'Payment modes disagree');
+          if(h.mode==='unconfigured'){
+            assert.equal(store.json.checkout_ready,false,'Unconfigured Stripe key must not allow charges');
+            assert.equal(h.stripe_api_ready,false,'Unconfigured Stripe key unexpectedly authenticated');
+          }else{
+            assert.equal(h.webhook_configured,true,'Stripe webhook signature secret missing');
+          }
+          if(store.json.checkout_ready){
+            assert.equal(h.webhook_configured,true,'Checkout cannot open without a webhook signing secret');
+            assert.equal(h.stripe_api_ready,true,'Checkout cannot open with unauthorized Stripe key');
+          }
           if(h.mode==='live'&&store.json.checkout_ready){
             assert.equal(h.live_merchant_ready,true,'Live checkout active without verified merchant');
             assert.equal(h.stripe_api_ready,true,'Live checkout active without verified Stripe key');
