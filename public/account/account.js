@@ -143,6 +143,11 @@
         receipt.rel='noopener noreferrer';
         row.append(receipt);
       }
+      if(typeof order.session_id==='string'&&/^cs_(test_|live_)[A-Za-z0-9_]{10,200}$/.test(order.session_id)){
+        const orderLink=link('/order/?session_id='+encodeURIComponent(order.session_id),'Order details ↗');
+        orderLink.setAttribute('aria-label','View order details and delivery for '+product.title);
+        row.append(orderLink);
+      }
       container.append(row);
     }
   }
