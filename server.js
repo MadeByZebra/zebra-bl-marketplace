@@ -292,9 +292,18 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb
   // A mismatched webhook environment cannot grant access or revoke orders.
   if(evt.livemode!==!testMode())return res.sendStatus(400);
   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(evt.type)){
-    const session=evt.data.object;
-    if(['paid','no_payment_required'].includes(session.payment_status)&&await grantFromStripe(await stripe.checkout.sessions.retrieve(session.id))){
-      await sendPurchaseConfirmation(session.id);
+    const incoming=evt.data.object;
+    if(['paid','no_payment_required'].includes(incoming.payment_status)){
+      const session=await stripe.checkout.sessions.retrieve(incoming.id);
+      // Stripe may send the webhook before our Checkout order insert finishes.
+      // Retry delivery instead of acknowledging an order we cannot yet fulfill.
+      const recorded=await query('SELECT session_id FROM purchases WHERE session_id=$1',[session.id]);
+      if(!recorded.length&&session.metadata?.sku&&session.metadata?.user_id){
+        throw new Error('Checkout order is not recorded yet; retry webhook delivery');
+      }
+      if(recorded.length&&await grantFromStripe(session)){
+        await sendPurchaseConfirmation(session.id);
+      }
     }
   }
   if(['charge.refunded','charge.dispute.created'].includes(evt.type)){
@@ -431,6 +440,7 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
  // A $0 checkout must use a Stripe coupon and receive an actual completed
  // Stripe Checkout Session. No fabricated "paid" records or client-side unlocks.
  let freeReservation=null;
+ let unfinishedSessionId=null;
  try{
   if(quote.free){
    freeReservation=await reserveFreePromo(req.user.id,sku);
@@ -454,12 +464,20 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
    sessionData.payment_intent_data={metadata:{sku,user_id:req.user.id,promo_code:quote.code||''}};
   }
   const session=await stripe.checkout.sessions.create(sessionData);
+  unfinishedSessionId=session.id;
   await query('INSERT INTO purchases (session_id,user_id,sku,amount,status,created_at) VALUES ($1,$2,$3,$4,$5,$6)',[session.id,req.user.id,sku,quote.total,'pending',now()]);
   if(freeReservation){
    await query('UPDATE free_promo_redemptions SET session_id=$1 WHERE user_id=$2 AND session_id=$3',[session.id,req.user.id,freeReservation]);
   }
+  unfinishedSessionId=null; // Order and any free-promo reservation are now durable.
   res.json({url:session.url,code:quote.code,amount:quote.total,free:!!quote.free});
  }catch(e){
+  // Never leave a payable Stripe URL open when our database rejected the order.
+  // This cleanup is best-effort; failed expiry must be visible to the operator.
+  if(unfinishedSessionId){
+   try{await stripe.checkout.sessions.expire(unfinishedSessionId);}
+   catch(expiryError){console.error('Failed to expire incomplete Checkout Session:',expiryError?.code||'unknown');}
+  }
   if(freeReservation)await query('DELETE FROM free_promo_redemptions WHERE user_id=$1 AND session_id=$2',[req.user.id,freeReservation]).catch(()=>{});
   safeError(res,e);
  }
