@@ -1,0 +1,15 @@
+# Customer databases and restore keys must never enter the public repository.
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+*.pgcustom
+*.pgcustom.cms
+*.pgdump
+*.dump
+*PRIVATE_KEY.pem
+*PRIVATE-KEY.pem
+*private-key.pem
+**/.secrets/
+node_modules/

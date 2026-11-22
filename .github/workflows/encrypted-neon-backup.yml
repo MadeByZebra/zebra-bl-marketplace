@@ -1,0 +1,81 @@
+name: Encrypted offsite Neon backup
+
+# Backups require repository secret BL_SCRIPTS_NEON_BACKUP_URL, which must
+# be supplied by the owner in GitHub Settings. NEVER add a DB URL to git.
+on:
+  schedule:
+    - cron: '17 14 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bl-scripts-neon-backup
+  cancel-in-progress: false
+
+jobs:
+  encrypted-backup:
+    if: github.repository == 'MadeByZebra/zebra-bl-marketplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.BL_SCRIPTS_NEON_BACKUP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse to run without the privately configured Neon backup connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${DATABASE_URL:-}" ]]; then
+            echo "::error::Backup did not run. Configure GitHub Actions repository secret BL_SCRIPTS_NEON_BACKUP_URL privately; no archive was created."
+            exit 1
+          fi
+          if [[ ! "${DATABASE_URL}" =~ ^postgres(ql)?:// ]]; then
+            echo "::error::Backup connection URL is invalid; no archive was created."
+            exit 1
+          fi
+          if [[ ! "${DATABASE_URL}" == *sslmode=* ]]; then
+            echo "::error::Neon backup URL must use an SSL-enabled PostgreSQL connection string."
+            exit 1
+          fi
+          openssl x509 -in backups/bl-scripts-backup-PUBLIC-cert.pem -noout -checkend 0 >/dev/null
+          echo "Neon backup prerequisites passed. Secrets are not printed."
+
+      - name: Export full PostgreSQL database using matching v18 client, then encrypt
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          # The database URL is passed as a private environment variable, not
+          # interpolated into logged commands or saved to source/artifacts.
+          docker run --rm -e DATABASE_URL postgres:18-alpine sh -c \
+            'exec pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-acl' \
+            > bl-scripts-database.pgcustom
+          test -s bl-scripts-database.pgcustom
+          openssl cms -encrypt -binary -aes-256-gcm \
+            -in bl-scripts-database.pgcustom \
+            -out bl-scripts-database.pgcustom.cms -outform DER \
+            -recip backups/bl-scripts-backup-PUBLIC-cert.pem
+          rm -f bl-scripts-database.pgcustom
+          test -s bl-scripts-database.pgcustom.cms
+          # Validate format; do not print encrypted customer bytes.
+          openssl cms -cmsout -inform DER -in bl-scripts-database.pgcustom.cms \
+            -out /dev/null
+          echo "Encrypted backup file created. No plaintext file remains."
+
+      - name: Store ciphertext only as an offsite encrypted artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bl-scripts-neon-encrypted-${{ github.run_id }}
+          path: bl-scripts-database.pgcustom.cms
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Destroy local plaintext and ciphertext temporary files
+        if: always()
+        shell: bash
+        run: |
+          rm -f bl-scripts-database.pgcustom bl-scripts-database.pgcustom.cms
