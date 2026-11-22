@@ -133,6 +133,9 @@
     showStatus('Payment verification pending.','No license is available until Stripe confirms the order.','Your order is recorded. Refresh to check again, or contact support if payment appears complete.');
     return;
    }
+   $('paymentStep').classList.add('completed');
+   $('paymentStep').querySelector('i').textContent='✓';
+   $('deliveryStep').classList.add('active');
    txt('resultSymbol','✓');
    txt('resultTitle','Order completed.');
    txt('resultDescription','Your purchase has been verified. Your items are ready below.');
@@ -142,6 +145,15 @@
    showStatus('We could not verify this order.','No software is released until the account and payment are verified.',err.message+' If you paid, try again or contact support with your order reference.',true);
   }
  }
+ $('copyAllLoadstrings').addEventListener('click',async()=>{
+  if(!state.secretCache.size){
+   note('orderNotice','Generate at least one personal loader first, then use Copy generated loaders.');
+   return;
+  }
+  const value=[...state.secretCache.entries()].map(([sku,code])=>sku+':\n'+code).join('\n\n');
+  try{await copyText(value);note('orderNotice','Copied generated loadstrings. Keep all personal license keys private.');}
+  catch(err){note('orderNotice',err.message,true);}
+ });
  $('orderEmailForm').addEventListener('submit',async e=>{
   e.preventDefault();state.email=$('orderEmail').value.trim().toLowerCase();$('orderSend').disabled=true;
   try{await api('/api/auth/request-code',{method:'POST',body:JSON.stringify({email:state.email})});showLogin();note('orderAuthStatus','Code sent. Check your email inbox and spam folder.');}
