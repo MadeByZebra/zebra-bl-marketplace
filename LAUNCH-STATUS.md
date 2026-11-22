@@ -1,15 +1,19 @@
-# BL Scripts launch status — verified 2026-11-22
+# BL Scripts launch status — 2026-11-22
 
-**Store browsing and customer sign-in: online. Real-money checkout: LOCKED.**
+**Website and customer sign-in: online. Real-money checkout: LOCKED.**
 
-- Render web service is on Free plan; latest production code supports restricted `rk_live_` Stripe server keys.
-- Live Stripe merchant is active with payouts, truthful product description and enabled webhook. One **unpaid** private live Checkout Session was created/expired successfully using the actual Render server key. Stripe lists zero live charges at the time of the 2026-11-22 audit.
-- The real server key could read Checkout Sessions, PaymentIntents and charges. Brevo delivered a new no-purchase owner diagnostic to the connected Gmail inbox on 2026-11-22; a separate receiving domain and an actual buyer receipt are not verified.
-- PostgreSQL migrated from Render's expiring Free database to Neon Free (Oregon); migration data and separate-branch restore were verified, but independent automatic offsite backups are **not yet active**. A GitHub Actions AES-256-GCM encrypted daily backup workflow and separate offline recovery key are prepared, pending the owner adding the private Neon database URL as a GitHub Actions repository secret and verifying the first encrypted artifact. A manual Neon snapshot exists and a ChatGPT daily snapshot task is scheduled; future task success is not guaranteed.
-- Six sealed scripts pass cryptographic integrity, **not** real Roblox runtime execution. ZFLAG Windows installer absent.
-- `ALLOW_LIVE_SALES=0`, `LIVE_DATABASE_CONFIRMED=0`, `LIVE_VERIFIED_SKUS=`, `LIVE_ZFLAG_VERIFIED=0` remain set.
-- See [Product runtime and payment release evidence](./PRODUCT-RUNTIME-RELEASE-EVIDENCE.md) for exactly what is still required before the first charge.
+## Verified systems
+- Production Render service runs from the `main` branch of `MadeByZebra/zebra-bl-marketplace` and uses a live restricted Stripe server API key. The merchant account diagnostic reports card charges/payouts ready, and the signed **live** webhook exists.
+- A no-charge live Stripe preflight successfully created and immediately expired an **unpaid** Checkout Session, read Checkout Sessions, PaymentIntents and charges, and confirmed the email provider accepted a diagnostic. A separate Brevo email was received in the connected owner's Gmail inbox. **Neither preflight represents a successful customer purchase.**
+- Production business tables migrated to Neon Free PostgreSQL in Oregon. Migration marker, purchase and license counts verified; a manual recovery snapshot was restored successfully into a separate Neon test branch.
+- The repository's daily encrypted GitHub Actions Neon backup completed successfully in run [45061677261](https://github.com/MadeByZebra/zebra-bl-marketplace/actions/runs/45061677261). Its ciphertext artifact was downloaded and decrypted with the offline recovery kit, and the PostgreSQL custom archive signature was verified. The source Neon database was not overwritten. **`LIVE_DATABASE_CONFIRMED=1`** is now justified by these storage and backup checks; backup retention is 30 days and scheduling must continue to be monitored.
+- The paid-license grant and Stripe refund/dispute revocation logic was put into the shared production `stripe-fulfillment.js` module and tested against **disposable, real PostgreSQL** in CI. Tests cover correct payment, wrong buyer/SKU/amount/environment, payment failure, signed-event tampering, genuine 100%-off claims, receipt idempotency, and refund/dispute license revocation. No live money or real customer records were used for these tests.
+- Six sealed Lua files pass decryption/hash integrity and all six public loaders route to the protected endpoints. **This is not evidence that the scripts are permitted or function correctly in the current Roblox client.** ZFLAG Windows installer is still absent/not approved.
 
-**No customer payments, refund tests, or bank payout tests have been performed by this audit.**
+## Still required before charging a real buyer
+1. **Product-specific runtime evidence and rights:** The owner reports that all scripts work but has not supplied exact current-client logs/videos/version/platform, or documented distribution permission. The store cannot independently certify functionality from that statement. Roblox prohibits cheating and exploiting; selling unauthorized cheats may violate platform terms, and Stripe acceptance of the merchant account does not establish eligibility for every product category.
+2. **Additional delivery testing:** Current Brevo-to-Gmail test passed; one independent second-provider inbox and a real buyer receipt have not been verified.
+3. **One consented low-value genuine payment/refund:** After a specific product is eligible, complete Stripe's real payment → signed webhook → Neon paid purchase → customer email → library → personal loadstring → actual authorized runtime → official receipt → refund/dispute → rejected old key. This needs the buyer's payment method and affirmative participation. Never fabricate a successful charge.
+4. **Product release flags:** `ALLOW_LIVE_SALES=0`, `LIVE_VERIFIED_SKUS=`, `LIVE_ZFLAG_VERIFIED=0` are deliberately enforced. Do not bypass them to make Buy appear active.
 
-- The owner must securely download and retain the confidential backup recovery kit from the ChatGPT conversation where it was created. The GitHub repository contains only the public encryption certificate, never the private key. See [encrypted offsite backup runbook](./ENCRYPTED-OFFSITE-BACKUP.md).
+See [runtime release evidence](./PRODUCT-RUNTIME-RELEASE-EVIDENCE.md) and [live payment checklist](./LIVE-PAYMENTS-READINESS.md). No real charges have been made by the audit. Stripe takes transaction fees after real sales start.
