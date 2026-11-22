@@ -160,13 +160,21 @@
   async function verifyCheckout(user){
     if(!pendingCheckoutId)return;
     const id=pendingCheckoutId;
-    pendingCheckoutId=null;
     try{
       const data=await api('/api/confirm',{method:'POST',body:JSON.stringify({session_id:id})});
       await showAccount(user,Boolean(data.paid));
-      if(!data.paid)alert('Payment is pending verification. No product access has been issued.');
-    }catch(error){alert(error.message,true);}
-    history.replaceState(null,'',location.pathname);
+      if(!data.paid){
+        alert('Payment has not been confirmed yet. No license has been issued. Refresh this page to retry verification; your checkout reference is preserved.');
+        return;
+      }
+      // A successful server-side verification is the ONLY reason to clear
+      // the reference. If Stripe or the network is down, users can retry.
+      pendingCheckoutId=null;
+      history.replaceState(null,'',location.pathname);
+    }catch(error){
+      alert('Payment verification could not complete: '+error.message+
+        '. Your order is not lost. Refresh this page to retry, or contact support if it remains pending.',true);
+    }
   }
   async function sendCode(isResend=false){
     email=$('loginEmail').value.trim().toLowerCase();
