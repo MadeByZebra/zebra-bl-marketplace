@@ -47,5 +47,8 @@ test('test-only purchase has hard test-mode gate and minimum $0.50 amount',()=>{
  assert.match(server,/item\.price<50/);
  assert.match(server,/item.id==='checkout-test'\)return testCheckoutReady\(\)/);
  assert.match(server,/\.webhooks\.constructEvent/);
- assert.match(server,/session\.payment_status!=='paid'/);
+ // Checkout proof moved from the HTTP handler into a shared server-only helper;
+ // assert the exact paid-status check there, rather than demanding it in server.js.
+ const fulfillment=readFileSync(new URL('../stripe-fulfillment.js',import.meta.url),'utf8');
+ assert.match(fulfillment,/session.payment_status!=='paid'/);
 });
