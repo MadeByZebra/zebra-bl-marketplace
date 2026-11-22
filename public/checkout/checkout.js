@@ -54,6 +54,8 @@
    if(!state.item){status('checkoutNotice','This product is not listed. Return to the catalog.',true);return;}
    state.quote={total:state.item.price,saved:0};
    renderItem();
+   const prefilled=(params.get('code')||'').slice(0,32);
+   if(prefilled){$('promoCode').value=prefilled;await updateQuote(prefilled);}
    if(state.item.unavailable||!store.checkout_ready){
     status('checkoutNotice',store.checkout_message||'Purchasing is paused until this product is verified. No charge will be taken.',true);
    }else{status('checkoutNotice','Your product is available. Confirm your account and review the terms to continue.');}
