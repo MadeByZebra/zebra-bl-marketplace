@@ -34,6 +34,7 @@ import {registerZebraChat} from './zebra-chat-server.js';
 import {marketplaceSchema} from './marketplace-schema.js';
 import {migrateMarketplaceDatabase} from './neon-migration.js';
 import {runUnpaidLiveCheckoutPreflight} from './live-launch-preflight.js';
+import {runEmailDeliveryProbe} from './email-delivery-probe.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -689,6 +690,17 @@ bootstrapDatabase().then(async()=>{
    unpaidLivePreflight={mode:'blocked',issues:['requires_authorized_live_key_email_and_locked_charges']};
    console.warn('Unpaid Stripe launch preflight: blocked by safety preconditions');
   }
+ }
+ // This operator-only email probe never creates Stripe sessions or modifies
+ // customer data. Its destination is private in Render; logs only safe status.
+ if(process.env.RUN_EMAIL_DELIVERY_PROBE==='1'){
+  const probe=await runEmailDeliveryProbe({
+   enabled:true,
+   recipient:process.env.EMAIL_DELIVERY_PROBE_RECIPIENT,
+   sendMail:sendShopEmail,
+   providerAuthorized:providerAuth==='authorized'
+  });
+  console.log('Email inbox probe:',JSON.stringify(probe));
  }
  console.log('Protected script integrity:',Object.values(payloadReadiness.products).filter(v=>v==='verified').length,'of 6');
  console.log('ZFLAG approved installer:',zflagInstallerReady?'verified':'not_available');
