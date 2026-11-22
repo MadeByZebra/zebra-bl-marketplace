@@ -709,7 +709,10 @@ app.get('/api/health',(_req,res)=>{
   sandbox_script_delivery_enabled:testMode()&&process.env.ENABLE_TEST_SOFTWARE_DELIVERY==='1'
  });
 });
-app.use(express.static(path.join(ROOT,'public'),{index:'index.html',dotfiles:'deny',setHeaders:r=>r.setHeader('Cache-Control','public,max-age=300')}));
+app.use(express.static(path.join(ROOT,'public'),{index:'index.html',dotfiles:'deny',setHeaders:(res,filePath)=>{
+ const isPrivatePage=/[/\\\\](account|order|checkout)[/\\\\]index\\.html$/.test(filePath);
+ res.setHeader('Cache-Control',isPrivatePage?'no-store, max-age=0':'public, max-age=300');
+}}));
 app.get('*',(_req,res)=>res.sendFile(path.join(ROOT,'public','index.html')));
 bootstrapDatabase().then(async()=>{
  await Promise.all([
