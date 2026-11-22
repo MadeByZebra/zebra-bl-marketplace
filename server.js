@@ -30,7 +30,8 @@ import {requiresSameOrigin,validLicenseKey,licenseRateLimitKey} from './loader-s
 import { getOtpKey,hashEmailOtp } from './email-otp.js';
 import { activeMailer,mailerMode,verifyEmailProvider,sendShopEmail,receiptEmail } from './email-delivery.js';
 import {validateSupportRequest,supportEmailContent} from './support-request.js';
-import {registerZebraChat,zebraChatSchema} from './zebra-chat-server.js';
+import {registerZebraChat} from './zebra-chat-server.js';
+import {marketplaceSchema} from './marketplace-schema.js';
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT||3000);
@@ -97,18 +98,7 @@ const usingPostgres=!!process.env.DATABASE_URL;
 let pool,sqlite;
 if(usingPostgres){pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_SSL==='require'?{rejectUnauthorized:true}:undefined});}
 else {sqlite=new DatabaseSync(path.join(ROOT,process.env.LOCAL_DB_PATH||'marketplace.sqlite'));sqlite.exec('PRAGMA journal_mode = WAL;PRAGMA foreign_keys = ON;');}
-const schema=[
- `CREATE TABLE IF NOT EXISTS email_codes (email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, expires_at BIGINT NOT NULL, sent_at BIGINT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, created_at BIGINT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires_at BIGINT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS purchases (session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_intent TEXT, created_at BIGINT NOT NULL, paid_at BIGINT)`,
- `CREATE TABLE IF NOT EXISTS licenses (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, created_at BIGINT NOT NULL, revoked_at BIGINT, last_used_at BIGINT)`,
- `CREATE UNIQUE INDEX IF NOT EXISTS licenses_one_active_per_product ON licenses (user_id,sku) WHERE revoked_at IS NULL`,
- `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS free_promo_redemptions (user_id TEXT PRIMARY KEY REFERENCES users(id), sku TEXT NOT NULL, session_id TEXT UNIQUE NOT NULL, created_at BIGINT NOT NULL, redeemed_at BIGINT)`
-,
- ...zebraChatSchema
-];
+const schema=marketplaceSchema;
 async function query(sql,values=[]){
  if(pool){const r=await pool.query(sql,values);return r.rows;}
  const stmt=sqlite.prepare(sql.replace(/\$\d+/g,'?'));
