@@ -17,6 +17,7 @@ import { discountQuote } from './discounts.js';
 import { validFreeCheckout } from './free-checkout.js';
 import { checkoutModeMatches, paymentIntentMatches } from './stripe-integrity.js';
 import {shouldRetryUnrecordedCheckout,expireIncompleteCheckout} from './checkout-consistency.js';
+import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
 import {requiresSameOrigin,validLicenseKey,licenseRateLimitKey} from './loader-security.mjs';
@@ -44,7 +45,7 @@ function verifyZflagInstaller(){
 }
 const zflagInstallerReady=verifyZflagInstaller();
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
-const webSecret=process.env.STRIPE_WEBHOOK_SECRET;
+const webSecret=()=>webhookSecretFor(process.env.STRIPE_SECRET_KEY,process.env);
 let stripeAuth='not_checked'; // Only status, never keys or account identifiers.
 let liveMerchant={ready:false,issues:['not_verified']};
 let liveMerchantLastChecked=0;
@@ -135,7 +136,7 @@ const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'d
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
 const supportFormLimiter=rateLimit({windowMs:60*60*1000,limit:4,standardHeaders:'draft-7',legacyHeaders:false});
 const testMode=()=>!!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_');
-const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&/^whsec_/.test(webSecret||'')&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
+const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY||'')&&configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env)&&process.env.DISABLE_CHECKOUT!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
 const checkoutReady=()=>paymentReady()&&(
  testMode()?process.env.ENABLE_TEST_CHECKOUT==='1'&&sandboxEmails().length>0:
  process.env.ALLOW_LIVE_SALES==='1'&&mailerMode()!=='resend_test_only'&&liveMerchant.ready
@@ -177,7 +178,7 @@ function checkoutStatus(){
  if(configuredForLive()&&!liveMerchant.ready)return 'Stripe has not yet enabled this business for real customer payments and payouts. No charge was made.';
  if(testMode()&&(!sandboxEmails().length||process.env.ENABLE_TEST_CHECKOUT!=='1'))
   return 'Stripe sandbox is restricted until an approved tester email is configured. No charge was made.';
- if(!/^whsec_/.test(webSecret||''))return 'Stripe payment verification is not connected yet. No charge was made.';
+ if(!configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env))return 'The signed Stripe webhook for this payment environment is not connected yet. No charge was made.';
  if(!usingPostgres)return 'The purchase database is not configured. No charge was made.';
  if(!mailReady())return 'Customer email delivery is not configured. No charge was made.';
  if(mailerMode()==='resend_test_only'&&!testMode())return 'Customer email is restricted to testing; live checkout is unavailable.';
@@ -287,8 +288,8 @@ async function sendPurchaseConfirmation(sessionId){
 
 // Registered BEFORE JSON parser: Stripe signatures require the untouched raw body.
 app.post('/api/stripe/webhook',express.raw({type:'application/json',limit:'256kb'}),async(req,res)=>{
- if(!stripe||!webSecret)return res.sendStatus(503);
- let evt;try{evt=stripe.webhooks.constructEvent(req.body,req.get('stripe-signature'),webSecret);}catch(e){return res.status(400).send('Invalid Stripe signature');}
+ if(!stripe||!configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env))return res.sendStatus(503);
+ let evt;try{evt=stripe.webhooks.constructEvent(req.body,req.get('stripe-signature'),webSecret());}catch(e){return res.status(400).send('Invalid Stripe signature');}
  try{
   // A mismatched webhook environment cannot grant access or revoke orders.
   if(evt.livemode!==!testMode())return res.sendStatus(400);
@@ -585,7 +586,7 @@ app.get('/api/health',(_req,res)=>{
   deployed_git_commit:/^[a-f0-9]{40}$/.test(process.env.RENDER_GIT_COMMIT||'')?process.env.RENDER_GIT_COMMIT:null,
   mode:testMode()?'test':process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')?'live':'unconfigured',
   email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',email_sender_mode:mailerMode(),email_provider_auth:providerAuth,
-  stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:/^whsec_/.test(webSecret||''),
+  stripe_api_ready:stripeAuth==='authorized',stripe_key_status:stripeAuth,webhook_configured:configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env),
   postgres_ready:usingPostgres,vault_ready:vaultReady,verified_script_count:Object.values(payloadReadiness.products).filter(v=>v==='verified').length,zflag_installer_ready:zflagInstallerReady,
    live_merchant_ready:configuredForLive()&&liveMerchant.ready,
   disabled_by_owner:process.env.DISABLE_CHECKOUT==='1',
