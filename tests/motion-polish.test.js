@@ -70,7 +70,7 @@ test('mobile dropdown retains Escape and outside dismissal, and support answers 
  assert.match(js,/event\.key==='Escape'/);
  assert.match(js,/button\.setAttribute\('aria-expanded','false'\)/);
  assert.match(css,/\.scripts-page \.mobile-nav\.show/);
- assert.match(html,/restricted live checkout pilot/);
+ assert.match(html,/six BL Scripts products and eligible bundles/);
  assert.match(html,/Roblox alt accounts/);
  assert.doesNotMatch(html,/<strong>Stripe Sandbox<\/strong> checkout is a simulation, not a real charge\. Public sales remain disabled/);
 });
