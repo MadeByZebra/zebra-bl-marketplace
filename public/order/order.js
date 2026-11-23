@@ -84,7 +84,7 @@
      if(typeof d.loadstring!=='string'||!d.loadstring.includes('ZebraLicense'))throw Error('Invalid license response.');
      state.secretCache.set(item.id,d.loadstring);
      area.value=d.loadstring;output.hidden=false;
-     noteInner(feedback,'New personal license created. Every older key is now REVOKED. Save this exact newest loadstring. Run it, then approve any 10-character installation code in My Library. You do not need another purchase.');
+     noteInner(feedback,'New personal command created. Every older key is REVOKED. Copy or download the personal loadstring displayed below BEFORE leaving. Run it, then approve any 10-character installation code in My Library. No additional purchase is needed.');
      gen.textContent='Rotate license ↗';
     }catch(error){note('orderNotice',error.message,true);gen.textContent=state.secretCache.has(item.id)?'Rotate license ↗':'Generate personal loadstring ↗';}
     finally{gen.disabled=false;}
