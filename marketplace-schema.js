@@ -23,7 +23,7 @@ export const marketplaceSchema=[
  `CREATE TABLE IF NOT EXISTS license_device_pairings (license_id TEXT NOT NULL REFERENCES licenses(id), device_hash TEXT NOT NULL, code_hash TEXT NOT NULL, requested_at BIGINT NOT NULL, expires_at BIGINT NOT NULL, PRIMARY KEY(license_id,device_hash))`,
  `CREATE INDEX IF NOT EXISTS license_device_pairings_expiry ON license_device_pairings(expires_at)`,
  `CREATE TABLE IF NOT EXISTS license_device_bindings (license_id TEXT PRIMARY KEY REFERENCES licenses(id), device_hash TEXT NOT NULL, approved_at BIGINT NOT NULL, last_used_at BIGINT NOT NULL, blocked_attempts INTEGER NOT NULL DEFAULT 0)`,
- `CREATE TABLE IF NOT EXISTS license_execution_tickets (token_hash TEXT PRIMARY KEY, license_id TEXT NOT NULL REFERENCES licenses(id), sku TEXT NOT NULL, network_hash TEXT NOT NULL, created_at BIGINT NOT NULL, expires_at BIGINT NOT NULL, consumed_at BIGINT)`,
+ `CREATE TABLE IF NOT EXISTS license_execution_tickets (token_hash TEXT PRIMARY KEY, license_id TEXT NOT NULL REFERENCES licenses(id), sku TEXT NOT NULL, created_at BIGINT NOT NULL, expires_at BIGINT NOT NULL, consumed_at BIGINT)`,
  `CREATE INDEX IF NOT EXISTS license_execution_tickets_expiry ON license_execution_tickets(expires_at)`,
  `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`,
  `CREATE TABLE IF NOT EXISTS free_promo_redemptions (user_id TEXT PRIMARY KEY REFERENCES users(id), sku TEXT NOT NULL, session_id TEXT UNIQUE NOT NULL, created_at BIGINT NOT NULL, redeemed_at BIGINT)`,
