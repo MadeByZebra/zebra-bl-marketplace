@@ -114,7 +114,7 @@ const schema=marketplaceSchema;
 async function query(sql,values=[]){
  if(pool){const r=await pool.query(sql,values);return r.rows;}
  const stmt=sqlite.prepare(sql.replace(/\$\d+/g,'?'));
- return /^\s*(SELECT|WITH)\b/i.test(sql)?stmt.all(...values):(stmt.run(...values),[]);
+ return /^\s*(SELECT|WITH)\b/i.test(sql)||/\bRETURNING\b/i.test(sql)?stmt.all(...values):(stmt.run(...values),[]);
 }
 async function init(){for(const sql of schema)await query(sql);}
 async function bootstrapDatabase(){
