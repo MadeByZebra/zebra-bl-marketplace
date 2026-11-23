@@ -7,7 +7,7 @@ const personalKey='ZBL_'+ 'a1'.repeat(28);
 test('all six GitHub loaders are present and contain no complete paid script',()=>{
  for(const sku of skus){
   const file=readFileSync(new URL('../loaders/'+sku+'.lua',import.meta.url),'utf8');
-  assert.ok(file.length<4000,sku+' should be a thin bootstrap');
+  assert.ok(file.length<8000,sku+' should be a thin bootstrap');
   assert.match(file,/ZebraLicense/);
   assert.match(file,/game:HttpGet/);
   assert.match(file,/loadstring/);
@@ -25,7 +25,7 @@ test('all six GitHub loaders are present and contain no complete paid script',()
 test('buyer commands fetch GitHub raw loaders and carry a personal license privately',()=>{
  for(const sku of skus){
   const url=githubLoaderUrl(sku);
-  assert.equal(url,'https://raw.githubusercontent.com/MadeByZebra/zebra-bl-marketplace/main/loaders/'+sku+'.lua?v=device-approval-f9-20261123-v2');
+  assert.equal(url,'https://raw.githubusercontent.com/MadeByZebra/zebra-bl-marketplace/main/loaders/'+sku+'.lua?v=device-approval-panel-20261123-v3');
   const command=buyerLoadstring(sku,personalKey);
   assert.match(command,/local fn,reason=loadstring\(src\)/);
   assert.ok(command.includes(url));

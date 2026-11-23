@@ -4,7 +4,7 @@
 const BASE='https://raw.githubusercontent.com/MadeByZebra/zebra-bl-marketplace/main/loaders/';
 // Change this version when public bootstraps update: cached old loaders cannot
 // perform buyer-approved installation pairing and must never be delivered.
-const BOOTSTRAP_VERSION='device-approval-f9-20261123-v2';
+const BOOTSTRAP_VERSION='device-approval-panel-20261123-v3';
 const SUPPORTED=Object.freeze(new Set([
  'control-center','str-grinder','end-grinder','dex-desktop','dex-mobile','fps-optimizer'
 ]));

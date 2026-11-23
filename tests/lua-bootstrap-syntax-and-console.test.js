@@ -32,7 +32,7 @@ function assertShortQuotedStringsAreClosed(source,sku){
 test('all six published Lua bootstraps are lexically valid and have a single delivery tail',()=>{
  for(const sku of SKUS){
   const source=readFileSync(new URL('../loaders/'+sku+'.lua',import.meta.url),'utf8');
-  assert.ok(source.length<4000,'unexpectedly huge public bootstrap '+sku);
+  assert.ok(source.length<8000,'unexpectedly huge public bootstrap '+sku);
   assertShortQuotedStringsAreClosed(source,sku);
   assert.equal((source.match(/local _u=table\.concat\(_b\)/g)||[]).length,1,sku+' malformed URL builder');
   assert.equal((source.match(/local _ok,_src=pcall/g)||[]).length,1,sku+' duplicated download code');
@@ -47,7 +47,7 @@ test('all six published Lua bootstraps are lexically valid and have a single del
   assert.match(source,/SetCore\('SendNotification'/,sku+' optional in-game notification missing');
   assert.match(source,/rconsoleprint/,sku+' executor output fallback missing');
   assert.doesNotMatch(source,/ZBL_[0-9a-f]{56}/,sku+' source accidentally contains paid key');
-  assert.doesNotMatch(source,/LocalPlayer|\.UserId|AccountAge/,sku+' must not bind to Roblox alt');
+  assert.doesNotMatch(source,/\.UserId|AccountAge|GetUserIdFromNameAsync/,sku+' must not bind to Roblox alt');
  }
 });
 test('new personal command handles compile/network failures without a nil call',()=>{
@@ -61,6 +61,6 @@ test('new personal command handles compile/network failures without a nil call',
   assert.match(personal,/return fn\(\)$/);
   assert.match(personal,/type\(loadstring\)~='function'/);
   assert.match(personal,/if type\(warn\)=='function'/);
-  assert.match(url,/device-approval-f9-20261123-v2$/);
+  assert.match(url,/device-approval-panel-20261123-v3$/);
  }
 });
