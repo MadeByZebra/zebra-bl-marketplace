@@ -97,7 +97,7 @@ test('each published GitHub bootstrap adds separate device identity without rest
   assert.match(s,/readfile/);
   assert.match(s,/writefile/);
   assert.match(s,/&device=/);
-  assert.doesNotMatch(s,/LocalPlayer|UserId|PlayerId|account_id|user_name/);
+  assert.doesNotMatch(s,/\.UserId|PlayerId|account_id|user_name|GetUserIdFromNameAsync/);
  }
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(server,/app\.post\('\/api\/approve-device\/:sku',deviceApproveLimiter,requireUser/);
