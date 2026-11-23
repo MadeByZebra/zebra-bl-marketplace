@@ -82,7 +82,7 @@ test('every storefront email-contact button has a working form href without JS',
   const html=readFileSync(new URL(path,import.meta.url),'utf8');
   assert.ok(html.includes('href="/support/#contact"'),path+' must link to support form');
   const links=[...html.matchAll(/<a\b[^>]*>/gi)].map(x=>x[0]);
-  const bad=links.filter(tag=>/href="mailto:zebrablshopofficial@gmail\.com/i.test(tag)&&!/data-zebra-email-client/.test(tag));
+  const bad=links.filter(tag=>/href="mailto:/i.test(tag)&&!/data-zebra-email-client/.test(tag));
   assert.equal(bad.length,0,path+' must not rely on mailto except explicit fallback');
  }
 });
