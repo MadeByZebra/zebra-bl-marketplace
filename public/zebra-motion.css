@@ -1,0 +1,161 @@
+/* BL Scripts — monochrome motion system (2026-11-23).
+   Progressive enhancement: semantic <details>, <dialog> and navigation remain
+   usable with JavaScript disabled. Reduced-motion users get instant changes. */
+:root{
+ --z-motion-ease:cubic-bezier(.22,1,.36,1);
+ --z-motion-out:cubic-bezier(.4,0,.2,1);
+ --z-motion-duration:300ms;
+}
+/* FAQ: CSS provides hover, focus, indicator and content fades.
+   JavaScript handles actual height interpolation (including closing). */
+:is(.faq-list,.help-faq) details{
+ transition:background-color .32s var(--z-motion-ease),
+            border-color .32s var(--z-motion-ease),
+            box-shadow .32s var(--z-motion-ease)!important;
+}
+:is(.faq-list,.help-faq) details:hover,
+:is(.faq-list,.help-faq) details[open]{
+ border-color:var(--line2,#494949);
+}
+.help-faq details:hover,.help-faq details[open]{
+ background:#141414;
+ border-color:#515151;
+ box-shadow:0 8px 24px rgba(0,0,0,.17);
+}
+:is(.faq-list,.help-faq) summary{
+ position:relative;
+ transition:color .22s ease!important;
+}
+:is(.faq-list,.help-faq) summary:focus-visible{
+ outline:2px solid #ededed!important;outline-offset:-4px!important;
+ border-radius:7px;
+}
+.help-faq summary::after{
+ content:''!important;display:block;flex:0 0 9px;width:9px;height:9px;
+ border-right:1.7px solid currentColor;border-bottom:1.7px solid currentColor;
+ margin:0 7px 5px 5px;color:#a9a9a9;
+ transform:rotate(45deg);transform-origin:center;
+ transition:transform .34s var(--z-motion-ease),color .2s!important;
+}
+.help-faq details[open] summary::after{
+ content:''!important;transform:rotate(225deg);color:#fff;
+ margin-bottom:-4px;
+}
+.faq-list summary span{
+ display:grid!important;place-items:center;flex:0 0 26px;
+ width:26px;height:26px;font-size:0!important;
+ transform:none!important;
+}
+.faq-list summary span::before{
+ content:'';display:block;width:10px;height:10px;
+ border-right:1.7px solid currentColor;border-bottom:1.7px solid currentColor;
+ transform:translateY(-3px) rotate(45deg);
+ transition:transform .34s var(--z-motion-ease),color .2s ease!important;
+}
+.faq-list details[open] summary span::before{
+ transform:translateY(2px) rotate(225deg);
+}
+:is(.faq-list,.help-faq) details[open]>:not(summary){
+ animation:z-answer-enter .3s var(--z-motion-ease) both;
+}
+@keyframes z-answer-enter{
+ from{opacity:0;transform:translateY(-6px)}
+ to{opacity:1;transform:translateY(0)}
+}
+/* Dropdown appears as one continuous panel, not a sudden flash. */
+@media(max-width:900px){
+ .scripts-page .mobile-nav{
+  display:flex!important;visibility:hidden;opacity:0;pointer-events:none;
+  transform:translateY(-10px) scale(.985);transform-origin:center top;
+  max-height:min(65dvh,440px);overflow-y:auto;overscroll-behavior:contain;
+  transition:opacity .25s var(--z-motion-out),
+             transform .34s var(--z-motion-ease),
+             visibility 0s linear .34s!important;
+  box-shadow:0 22px 70px rgba(0,0,0,.45)!important;
+ }
+ .scripts-page .mobile-nav.show{
+  visibility:visible;opacity:1;pointer-events:auto;
+  transform:translateY(0) scale(1);
+  transition:opacity .28s var(--z-motion-out),
+             transform .36s var(--z-motion-ease),
+             visibility 0s!important;
+ }
+ .scripts-page .mobile-nav a{
+  transition:color .2s ease,background-color .25s ease,transform .25s var(--z-motion-ease)!important;
+ }
+ .scripts-page .mobile-nav a:hover{transform:translateX(3px)}
+}
+/* Product, authentication, library, and policy popups. Dialogs retain the
+   native focus trap, ESC support, and inert background semantics. */
+.scripts-page dialog[open]{
+ animation:z-dialog-enter .35s var(--z-motion-ease) both;
+}
+.scripts-page dialog[open]::backdrop{
+ animation:z-backdrop-enter .3s ease-out both;
+}
+@keyframes z-dialog-enter{
+ from{opacity:0;transform:translateY(18px) scale(.976)}
+ to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes z-backdrop-enter{
+ from{background:rgba(0,0,0,0);backdrop-filter:blur(0)}
+ to{background:rgba(0,0,0,.72);backdrop-filter:blur(7px)}
+}
+.scripts-page dialog.z-motion-closing{pointer-events:none}
+.scripts-page .dialog :is(.primary-button,.outline-button,.dialog-x){
+ transition:transform .2s var(--z-motion-ease),
+            background-color .2s ease,border-color .2s ease!important;
+}
+/* Floating support chat: no fake assistant typing indicators.
+   Only real newly received messages enter; polling does not replay animations. */
+.zebra-owned-chat{
+ transform-origin:right bottom;
+ will-change:opacity,transform;
+}
+.zebra-owned-chat.is-closing{pointer-events:none!important}
+.zebra-owned-bubble.is-new{
+ animation:z-bubble-enter .28s var(--z-motion-ease) both;
+}
+.zebra-owned-bubble.from-visitor.is-new{
+ animation-name:z-bubble-enter-right;
+}
+@keyframes z-bubble-enter{
+ from{opacity:0;transform:translateY(10px) scale(.982)}
+ to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes z-bubble-enter-right{
+ from{opacity:0;transform:translate(6px,8px) scale(.985)}
+ to{opacity:1;transform:translate(0,0) scale(1)}
+}
+.zebra-owned-chat-state.is-pending::before{
+ content:'';display:inline-block;width:6px;height:6px;
+ margin-right:8px;vertical-align:1px;border-radius:50%;
+ background:#e6e6e6;animation:z-pending-pulse 1s ease-in-out infinite;
+}
+@keyframes z-pending-pulse{
+ 0%,100%{opacity:.4;transform:scale(.85)}
+ 50%{opacity:1;transform:scale(1.18)}
+}
+.zebra-owned-icon-button,.zebra-owned-send,.zebra-owned-link{
+ transition:transform .2s var(--z-motion-ease),
+            background-color .2s ease,border-color .2s ease,
+            box-shadow .2s ease!important;
+}
+.zebra-owned-icon-button:hover,.zebra-owned-send:hover:not(:disabled){transform:translateY(-1px)}
+.zebra-owned-send:hover:not(:disabled){box-shadow:0 4px 18px rgba(255,255,255,.1)}
+.zebra-owned-chat-input{transition:border-color .22s ease,box-shadow .22s ease!important}
+@media(prefers-reduced-motion:reduce){
+ :root{--z-motion-duration:0ms}
+ :is(.faq-list,.help-faq) details,
+ :is(.faq-list,.help-faq) summary,
+ :is(.faq-list,.help-faq) summary::after,
+ .faq-list summary span::before,
+ .scripts-page .mobile-nav,
+ .scripts-page .mobile-nav a,
+ .zebra-owned-chat,
+ .zebra-owned-chat *,
+ .scripts-page .dialog,
+ .scripts-page .dialog *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+ .scripts-page dialog[open],.scripts-page dialog[open]::backdrop{animation:none!important}
+ .zebra-owned-bubble.is-new{animation:none!important}
+}
