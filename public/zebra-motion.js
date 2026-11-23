@@ -6,6 +6,7 @@
  const reduce=()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches===true;
  const easing='cubic-bezier(.22,1,.36,1)';
  const running=new WeakMap();
+ const fadesByDetail=new WeakMap();
  function installAccordions(){
   document.querySelectorAll('.faq-list details, .help-faq details').forEach(details=>{
    const summary=details.querySelector(':scope > summary');
@@ -18,6 +19,8 @@
     const current=details.getBoundingClientRect().height;
     const opening=old?details.dataset.motionTarget!=='open':!details.open;
     if(old)old.cancel();
+    for(const fade of fadesByDetail.get(details)||[])fade.cancel();
+    fadesByDetail.delete(details);
     details.dataset.motionTarget=opening?'open':'closed';
     details.style.height=current+'px';
     details.style.overflow='hidden';
@@ -35,8 +38,16 @@
      {height:end+'px'}
     ],{duration:360,easing,fill:'forwards'});
     running.set(details,animation);
+    const fades=[...details.children].filter(node=>node!==summary&&typeof node.animate==='function')
+      .map(node=>node.animate([
+        {opacity:opening?0:1,transform:opening?'translateY(-5px)':'translateY(0)'},
+        {opacity:opening?1:0,transform:opening?'translateY(0)':'translateY(-4px)'}
+      ],{duration:opening?290:190,easing,fill:'forwards'}));
+    fadesByDetail.set(details,fades);
     animation.onfinish=()=>{
      if(running.get(details)!==animation)return;
+     for(const fade of fadesByDetail.get(details)||[])fade.cancel();
+     fadesByDetail.delete(details);
      details.open=opening;
      details.style.removeProperty('height');
      details.style.removeProperty('overflow');
