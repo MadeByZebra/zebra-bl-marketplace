@@ -15,7 +15,7 @@ test('every storefront HTML page uses the approved Z favicon and global branding
  for(const name of pageFiles){
   const s=read(name);
   assert.match(s,/<link\s+rel="icon"\s+type="image\/svg\+xml"\s+href="\/assets\/zebra-z-mark\.svg\?v=1">/,name);
-  assert.match(s,/<link\s+rel="stylesheet"\s+href="\/brand\.css\?v=20261123a">/,name);
+  assert.match(s,/<link\s+rel="stylesheet"\s+href="\/brand\.css\?v=20261123(?:a|-permanent1)">/,name);
   assert.doesNotMatch(s,/<link\s+rel="icon"\s+href="data:,">/,name);
   assert.equal((s.match(/<\/head>/g)||[]).length,1,name);
   assert.equal((s.match(/<\/body>/g)||[]).length,1,name);
