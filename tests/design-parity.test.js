@@ -12,7 +12,7 @@ test('every shop page loads same true-black design system',()=>{
  for(const [name,html] of Object.entries({home,scripts,zflag,account})){
   assert.match(html,/class="zebra-v8/);
   assert.match(html,/zebra-true-black-v8\.css/);
-  assert.match(html,/ZEBRA’S SHOP/);
+  assert.match(html,/class="brand-logo" src="\/assets\/bl-scripts-logo\.svg\?v=1"/);
  }
 });
 test('premium layout retains centered hero, full-width studio and content depth',()=>{
