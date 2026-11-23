@@ -155,3 +155,34 @@
 .commerce-device-pairing .commerce-form input:focus-visible{
  outline:2px solid #eee!important;outline-offset:2px!important;
 }
+
+/* Always-visible result of personal key generation. Error messages used to
+   live INSIDE a hidden secret panel and appeared to vanish to buyers. */
+.commerce-account .commerce-generation-status{
+ display:block!important;margin:13px 0 15px!important;
+ border:1px solid #393939;border-radius:9px;
+ padding:12px 14px;background:#111;color:#ededed;
+ font:500 12px/1.6 Geist,system-ui,sans-serif;
+ overflow-wrap:anywhere;min-height:0;
+}
+.commerce-account .commerce-generation-status.error{
+ border-color:#985d54;color:#ffbdb8;background:#221514;
+}
+.commerce-account .commerce-loader-card:not([hidden]):not(.commerce-device-pairing){
+ display:grid;gap:12px;margin:12px 0 20px;padding:17px;
+ border:1px solid #777!important;border-radius:12px;
+ background:linear-gradient(140deg,#171717,#0b0b0b);
+ box-shadow:0 0 0 1px rgba(255,255,255,.075);
+}
+.commerce-account .commerce-loader-card:not([hidden]):not(.commerce-device-pairing)>textarea{
+ display:block;min-width:0;width:100%;min-height:116px;
+ font:500 12px/1.75 ui-monospace,'Geist Mono',monospace;
+ color:#fff;background:#080808;border:1px solid #656565;
+ border-radius:8px;padding:13px;overflow-wrap:anywhere;resize:vertical;
+}
+.commerce-account .commerce-loader-card:not([hidden]):not(.commerce-device-pairing) .commerce-actions{
+ display:flex;gap:10px;flex-wrap:wrap;
+}
+.commerce-account .commerce-loader-card:not([hidden]):not(.commerce-device-pairing) .commerce-eyebrow{
+ color:#fff!important;letter-spacing:.1em;font-size:11px;
+}
