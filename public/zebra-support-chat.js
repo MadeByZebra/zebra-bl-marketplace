@@ -9,7 +9,9 @@
   if(checkoutReturn)document.documentElement.classList.add('zebra-payment-return');
   const STORE_KEY='zebra_shop_support_chat_v1';
   const supportUrl='/support/#contact';
-  let session=null,opened=false,busy=false,tick=null,seenCount=0;
+  let session=null,opened=false,busy=false,tick=null,seenCount=0,panelMotion=null;
+  let renderedSignatures=[];
+  const reducedMotion=()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches===true;
   try{const v=JSON.parse(localStorage.getItem(STORE_KEY)||'null');if(v&&/^[a-f0-9-]{36}$/.test(v.id)&&/^[a-f0-9]{64}$/.test(v.token))session=v;}catch(_e){}
   const el=(tag,className,text)=>{
     const v=document.createElement(tag);if(className)v.className=className;
@@ -60,7 +62,7 @@
   const newChat=el('button','zebra-owned-link','New chat');newChat.type='button';
   tools.append(human,mail,newChat);
   panel.append(header,feed,state,form,tools);
-  const showState=(v,isError=false)=>{state.textContent=v;state.classList.toggle('is-error',isError);};
+  const showState=(v,isError=false)=>{state.textContent=v;state.classList.toggle('is-error',isError);state.classList.toggle('is-pending',!isError&&/connecting|sending|loading|checking/i.test(v));};
   async function api(url,options={}){
     const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{})};
     if(session)headers['X-Zebra-Chat-Token']=session.token;
@@ -80,18 +82,30 @@
     }
     if(i<text.length)node.append(document.createTextNode(text.slice(i)));
   };
+  // Polling must not destroy and recreate messages every five seconds:
+  // that reset keyboard links, scroll position, and any entrance animation.
   function render(messages,status){
+    const list=Array.isArray(messages)?messages:[];
+    const signatures=list.map(msg=>JSON.stringify([
+      msg.id??null,msg.sender??null,msg.created_at??null,msg.text??''
+    ]));
+    const incremental=signatures.length>=renderedSignatures.length
+      &&renderedSignatures.every((sig,index)=>signatures[index]===sig);
     const nearEnd=feed.scrollHeight-feed.scrollTop-feed.clientHeight<90;
-    feed.replaceChildren();
-    for(const msg of messages){
+    if(!incremental)feed.replaceChildren();
+    const begin=incremental?renderedSignatures.length:0;
+    for(let i=begin;i<list.length;i++){
+      const msg=list[i];
       const item=el('article','zebra-owned-bubble '+(msg.sender==='visitor'?'from-visitor':msg.sender==='human'?'from-owner':msg.sender==='system'?'from-system':'from-assistant'));
       const who=msg.sender==='visitor'?'You':msg.sender==='human'?'Zebra (human)':msg.sender==='system'?'System':'Zebra Assistant';
       item.append(el('div','zebra-owned-bubble-label',who));
       const txt=el('div','zebra-owned-bubble-text');withLinks(txt,String(msg.text||''));item.append(txt);
+      if(!reducedMotion()&&i>=list.length-4)item.classList.add('is-new');
       feed.append(item);
     }
-    if(nearEnd||messages.length!==seenCount)feed.scrollTop=feed.scrollHeight;
-    seenCount=messages.length;
+    if(nearEnd||seenCount===0)feed.scrollTop=feed.scrollHeight;
+    renderedSignatures=signatures;
+    seenCount=list.length;
     if(status==='human'){showState('A human team member has joined this chat.');human.disabled=true;}
     else if(status==='waiting'){showState('Human assistance requested • We will notify the owner.');human.disabled=true;}
     else if(status==='closed'){showState('Conversation closed. You can start a new chat.');input.disabled=true;send.disabled=true;human.disabled=true;}
@@ -117,9 +131,31 @@
     if(session){await load();if(session)return;}
     await start();
   }
+  function animatePanel(entering){
+    if(panelMotion){panelMotion.cancel();panelMotion=null;}
+    panel.classList.toggle('is-closing',!entering);
+    if(reducedMotion()||typeof panel.animate!=='function'){
+      if(!entering)panel.hidden=true;
+      return;
+    }
+    const frames=entering
+      ?[{opacity:0,transform:'translateY(20px) scale(.965)'},{opacity:1,transform:'translateY(0) scale(1)'}]
+      :[{opacity:1,transform:'translateY(0) scale(1)'},{opacity:0,transform:'translateY(13px) scale(.98)'}];
+    const animation=panel.animate(frames,{
+      duration:entering?310:185,easing:entering?'cubic-bezier(.22,1,.36,1)':'ease-in',fill:'forwards'
+    });
+    panelMotion=animation;
+    animation.onfinish=()=>{
+      if(panelMotion!==animation)return;
+      panelMotion=null;
+      if(!entering&&!opened){panel.hidden=true;panel.classList.remove('is-closing');}
+    };
+  }
   async function open(){
     if(opened)return;
-    opened=true;panel.hidden=false;launcher.setAttribute('aria-expanded','true');
+    opened=true;panel.hidden=false;animatePanel(true);
+    launcher.classList.add('is-open');
+    launcher.setAttribute('aria-expanded','true');
     document.documentElement.classList.add('zebra-chat-scroll-locked');
     showState('Connecting to Zebra Support…');
     try{await ensureSession();}catch(e){showState(e.message+' You can use Email support.',true);}
@@ -129,20 +165,26 @@
     input.focus();
   }
   function hide(restoreFocus=true){
-    opened=false;panel.hidden=true;launcher.setAttribute('aria-expanded','false');
+    if(!opened)return;
+    opened=false;animatePanel(false);
+    launcher.classList.remove('is-open');
+    launcher.setAttribute('aria-expanded','false');
     document.documentElement.classList.remove('zebra-chat-scroll-locked');
     if(tick)clearInterval(tick);tick=null;if(restoreFocus)launcher.focus();
   }
   launcher.addEventListener('click',()=>opened?hide():open());
   close.addEventListener('click',hide);
   document.addEventListener('keydown',event=>{if(opened&&event.key==='Escape')hide();});
+  document.addEventListener('pointerdown',event=>{
+    if(opened&&event.target&&!panel.contains(event.target)&&!launcher.contains(event.target))hide(false);
+  });
   input.addEventListener('keydown',event=>{
     if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();form.requestSubmit();}
   });
   form.addEventListener('submit',async(event)=>{
     event.preventDefault();const value=input.value.trim();
     if(!value||busy)return;
-    busy=true;send.disabled=true;
+    busy=true;send.disabled=true;showState('Sending securely…');
     try{
       if(!session)await start();
       await api('/api/zebra-chat/'+encodeURIComponent(session.id)+'/message',{
@@ -163,7 +205,7 @@
   });
   newChat.addEventListener('click',async()=>{
     if(busy)return;
-    session=null;seenCount=0;feed.replaceChildren();
+    session=null;seenCount=0;renderedSignatures=[];feed.replaceChildren();
     try{localStorage.removeItem(STORE_KEY);}catch(_e){}
     input.disabled=false;send.disabled=false;human.disabled=false;
     try{await start();}catch(e){showState(e.message,true);}
