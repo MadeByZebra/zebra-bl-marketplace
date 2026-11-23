@@ -79,5 +79,5 @@ test('public site asset links resolve to checked-in local files',()=>{
 });
 test('privacy and license terms accurately disclose network binding and reset limits',()=>{
  assert.match(read('privacy/index.html'),/hashed network identifier/);
- assert.match(read('terms/index.html'),/three keys per product/);
+ assert.match(read('terms/index.html'),/four personal keys per product/);
 });
