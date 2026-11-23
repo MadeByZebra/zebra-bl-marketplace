@@ -40,7 +40,9 @@ test('the proprietary shop email, not the purchaser email, is used in order conf
  assert.match(server,/supportEmail:process\.env\.SUPPORT_EMAIL/);
  assert.match(server,/replyTo:process\.env\.SUPPORT_EMAIL/);
  assert.match(delivery,/Contact BL Scripts Support:/);
- assert.match(read('support/index.html'),/zebrablshopofficial@gmail\.com/);
+ assert.doesNotMatch(read('support/index.html'),/@gmail\.com|mailto:|mail\.google\.com/);
+ assert.match(read('support/index.html'),/id="zebra-support-form"/);
+ assert.match(server,/support_contact_url:'\/support\/#contact'/);
  // Stripe's own email receipt is independent of the shop's confirmation,
  // and must be configured in the Stripe Dashboard public business profile.
 });
