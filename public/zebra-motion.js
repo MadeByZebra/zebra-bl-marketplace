@@ -53,6 +53,9 @@
      details.style.removeProperty('overflow');
      details.removeAttribute('data-motion-target');
      running.delete(details);
+     // Prevent the fill-forwards animation from freezing future FAQ heights
+     // after resizing, filtering, or reopening.
+     animation.cancel();
     };
    });
   });
