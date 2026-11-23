@@ -10,7 +10,7 @@ const htmlPages=['public/index.html','public/scripts/index.html','public/account
 test('all seven pages use only our Zebra-owned widget, never embed tawk.to',()=>{
  for(const page of htmlPages){
   const html=read(page);
-  assert.equal((html.match(/src="\/zebra-support-chat\.js\?v=20261121v1"/g)||[]).length,1,page);
+  assert.equal((html.match(/src="\/zebra-support-chat\.js\?v=20261123-motion1"/g)||[]).length,1,page);
   assert.doesNotMatch(html,/src="\/tawk-chat\.js"|embed\.tawk\.to|Powered by tawk\.to/i,page);
   assert.match(html,/href="\/zebra-chat\.css"/);
  }
