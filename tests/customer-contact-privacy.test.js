@@ -10,13 +10,12 @@ const sourceFiles=(dir)=>readdirSync(dir,{withFileTypes:true}).flatMap(entry=>{
  if(entry.isDirectory())return sourceFiles(path);
  return /\.(?:html|js|css|svg)$/.test(entry.name)?[path]:[];
 });
-test('public site does not hardcode private Gmail support or seller contact addresses',()=>{
+test('no public website asset exposes a seller mailbox, private address or email-client fallback',()=>{
  for(const path of sourceFiles(root.pathname)){
   const src=readFileSync(path,'utf8');
-  for(const email of src.matchAll(/[a-z0-9._%+-]+@gmail\.com/gi)){
-   assert.equal(email[0].toLowerCase(),'zebrablshopofficial@gmail.com',
-    'Unexpected Gmail contact in publicly shipped asset '+path);
-  }
+  assert.doesNotMatch(src,/[a-z0-9._%+-]+@gmail\.com/gi,'Public email in '+path);
+  assert.doesNotMatch(src,/mailto:|mail\.google\.com\/mail\//i,'Public email-app URL in '+path);
+  assert.doesNotMatch(src,/kellyjieyi37|1137\s+Helios|504[\s.()-]*708[\s.()-]*8780/i,'Personal address or phone in '+path);
  }
 });
 test('account makes installation activation steps clear without pretending an activation code exists on the site',()=>{
@@ -43,6 +42,7 @@ test('the proprietary shop email, not the purchaser email, is used in order conf
  assert.doesNotMatch(read('support/index.html'),/@gmail\.com|mailto:|mail\.google\.com/);
  assert.match(read('support/index.html'),/id="zebra-support-form"/);
  assert.match(server,/support_contact_url:'\/support\/#contact'/);
+ assert.doesNotMatch(server,/support_email:process\.env\.SUPPORT_EMAIL\|\|null,catalog/);
  // Stripe's own email receipt is independent of the shop's confirmation,
  // and must be configured in the Stripe Dashboard public business profile.
 });
