@@ -72,7 +72,11 @@
      outgoing=null;dialog.classList.remove('z-motion-closing');
     };
     outgoing.onfinish=()=>{
+     const finished=outgoing;
      if(dialog.open)dialog.close();
+     // Without cancelling the forwards-filled exit animation, reopening this
+     // same native dialog can incorrectly leave it invisible.
+     finished?.cancel();
      reset();
     };
     outgoing.oncancel=reset;
