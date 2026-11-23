@@ -74,7 +74,8 @@
    const download=element('button','Download .txt','commerce-button commerce-secondary');download.type='button';
    const feedback=element('p',undefined,'commerce-inline-status');
    controls.append(copy,download);
-   output.append(label,area,controls,feedback);
+   output.append(label,area,controls,feedback,element('p','If the script asks you to approve this installation, sign in to My Library and enter the activation code. Main and alt Roblox accounts can share an approved installation. Do not share this personal command.','commerce-muted'));
+
    gen.addEventListener('click',async()=>{
     if(state.secretCache.has(item.id)&&!confirm('Generating another loadstring revokes the previous one. Continue?'))return;
     gen.disabled=true;gen.textContent='Verifying paid access…';
@@ -83,7 +84,7 @@
      if(typeof d.loadstring!=='string'||!d.loadstring.includes('ZebraLicense'))throw Error('Invalid license response.');
      state.secretCache.set(item.id,d.loadstring);
      area.value=d.loadstring;output.hidden=false;
-     noteInner(feedback,'Personal license created. Previous keys are revoked.');
+     noteInner(feedback,'New personal license created. Every older key is now REVOKED. Save this exact newest loadstring. Run it, then approve any 10-character installation code in My Library. You do not need another purchase.');
      gen.textContent='Rotate license ↗';
     }catch(error){note('orderNotice',error.message,true);gen.textContent=state.secretCache.has(item.id)?'Rotate license ↗':'Generate personal loadstring ↗';}
     finally{gen.disabled=false;}
