@@ -27,7 +27,7 @@ jobs:
           url='https://zebra-bl-marketplace.onrender.com/api/support/request'
           test={
             'name':'Zebra Shop QA Test',
-            'email':'zebrablshopofficial@gmail.com',
+            'email':'support-fixture@example.com',
             'subject':'Other',
             'product':'',
             'order':'',
