@@ -57,7 +57,7 @@ test('receipt only displays deliverables after signed-in server verification',()
  assert.match(orderJs,/\$\('paymentStep'\)\.classList\.add\('completed'\)/);
  assert.match(orderJs,/\$\('copyAllLoadstrings'\)\.addEventListener/);
  assert.match(orderJs,/api\('\/api\/license\//);
- assert.match(orderJs,/Generate personal loadstring/);
+ assert.match(orderJs,/View my purchased loadstring/);
  assert.match(orderJs,/Download \.txt/);
  assert.match(orderJs,/api\/receipt\//);
  assert.match(orderJs,/navigator\.clipboard/);
