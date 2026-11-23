@@ -23,7 +23,7 @@ import {liveBuyerAllowed} from './live-checkout-buyers.js';
 import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.js';
 import {stripeKeyMode,stripeKeyType} from './stripe-key-mode.js';
 import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
-import {rotateLicenseAtomically} from './license-rotation.js';
+import {rotateLicenseAtomically,LicenseRotationLimitError} from './license-rotation.js';
 import {hashedNetwork,authorizeNetwork} from './license-network-binding.js';
 import {reconcilePendingPurchases} from './purchase-reconciliation.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
@@ -641,7 +641,10 @@ app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
   await rotateLicenseAtomically({pool,sqlite,userId:req.user.id,sku,
    licenseId:randomUUID(),tokenHash:sha(key),at:now(),maxKeysPerWeek:3});
   res.json({loadstring:buyerLoadstring(sku,key),note:'One active network per private license when protection is enabled. Your first launch claims that network. If you change networks, generate a new key in My Library; the old one stops working. You can receive up to three keys per seven days per product.'});
- }catch(e){safeError(res,e);}
+ }catch(e){
+  if(e instanceof LicenseRotationLimitError)return res.status(429).json({error:e.message});
+  safeError(res,e);
+ }
 });
 // Private, read-only installation information. Never return the network hash.
 app.get('/api/license-status/:sku',requireUser,async(req,res)=>{
