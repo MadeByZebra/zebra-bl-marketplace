@@ -25,9 +25,9 @@ test('all six GitHub loaders are present and contain no complete paid script',()
 test('buyer commands fetch GitHub raw loaders and carry a personal license privately',()=>{
  for(const sku of skus){
   const url=githubLoaderUrl(sku);
-  assert.equal(url,'https://raw.githubusercontent.com/MadeByZebra/zebra-bl-marketplace/main/loaders/'+sku+'.lua?v=device-approval-20261123-v1');
+  assert.equal(url,'https://raw.githubusercontent.com/MadeByZebra/zebra-bl-marketplace/main/loaders/'+sku+'.lua?v=device-approval-f9-20261123-v2');
   const command=buyerLoadstring(sku,personalKey);
-  assert.match(command,/loadstring\(game:HttpGet/);
+  assert.match(command,/local fn,reason=loadstring\(src\)/);
   assert.ok(command.includes(url));
   assert.ok(command.includes(personalKey));
   assert.ok(!url.includes(personalKey));

@@ -191,14 +191,14 @@
         const pairing=element('section',undefined,'commerce-loader-card commerce-device-pairing');
         const heading=element('strong','ACTIVATE YOUR PURCHASED INSTALLATION');
         heading.className='commerce-eyebrow';
-        const pairHelp=element('p','The 10-character activation code is NOT emailed and does NOT appear automatically in My Library. It is displayed in your Roblox executor console/output only after you run your newest personal loadstring. Enter the code below within 10 minutes. Your main and alt accounts can use the same approved installation.','commerce-muted');
+        const pairHelp=element('p','The 10-character activation code is NOT emailed and does NOT appear automatically in My Library. It appears in the Roblox F9 Developer Console (Client log) when your executor supports it, and in the executor console/output after you run your newest personal loadstring. The loader also tries to show an in-game notification. Enter the code below within 10 minutes. Your main and alt accounts can use the same approved installation.','commerce-muted');
         const steps=element('ol',undefined,'commerce-activation-steps');
         for(const message of [
           'Use your saved newest personal loadstring. Only click Generate / replace if you lost it, because generating again revokes the old key.',
-          'Run that command in-game. Open your executor console/output and look for “Zebra installation activation required” followed by a 10-character code.',
+          'Run that command in-game. Press F9 to check Roblox Developer Console > Client, or open your executor output. Look for “[BL Scripts] ACTIVATION CODE” followed by the 10-character code.',
           'Copy the code into the box below, choose Approve installation, then run the SAME personal loadstring again.'
         ])steps.append(element('li',message));
-        const noCode=element('p','No code showing? Check the executor output for an error, confirm that you used the newest command, and contact Support if the loader cannot run. Never post your license key or code publicly.','commerce-muted');
+        const noCode=element('p','No code in F9? Check the Client tab (not Server) and your executor console. Some executors do not forward messages to F9. If you see an error, contact Support with the error text only. Never post your personal license or activation code publicly.','commerce-muted');
         const form=element('form',undefined,'commerce-form');
         const codeLabel=element('label','Activation code (10 characters)');
         const codeInput=element('input');
