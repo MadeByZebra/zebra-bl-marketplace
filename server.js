@@ -643,6 +643,29 @@ app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
   res.json({loadstring:buyerLoadstring(sku,key),note:'One active network per private license when protection is enabled. Your first launch claims that network. If you change networks, generate a new key in My Library; the old one stops working. You can receive up to three keys per seven days per product.'});
  }catch(e){safeError(res,e);}
 });
+// Private, read-only installation information. Never return the network hash.
+app.get('/api/license-status/:sku',requireUser,async(req,res)=>{
+ const sku=String(req.params.sku||'');
+ if(!products.some(p=>p.id===sku&&!p.unavailable))return res.sendStatus(404);
+ try{
+  if(!await entitlementIsPaid(req.user.id,sku))return res.sendStatus(403);
+  const rows=await query(`SELECT l.created_at,l.last_used_at,
+    b.first_seen_at,b.last_seen_at,b.blocked_attempts
+    FROM licenses l LEFT JOIN license_network_bindings b ON b.license_id=l.id
+    WHERE l.user_id=$1 AND l.sku=$2 AND l.revoked_at IS NULL`,[req.user.id,sku]);
+  const recent=await query('SELECT COUNT(*) AS n FROM licenses WHERE user_id=$1 AND sku=$2 AND created_at>=$3',
+    [req.user.id,sku,now()-7*24*60*60*1000]);
+  const bound=rows[0];
+  res.json({
+   issued:!!bound,network_bound:!!bound?.first_seen_at,
+   first_used_at:bound?.first_seen_at?Number(bound.first_seen_at):null,
+   last_used_at:bound?.last_seen_at?Number(bound.last_seen_at):null,
+   blocked_network_attempts:bound?Number(bound.blocked_attempts||0):0,
+   keys_issued_last_7_days:Number(recent[0]?.n||0),max_keys_per_7_days:3,
+   protection_enabled:process.env.ENFORCE_LICENSE_NETWORK_BINDING==='1'
+  });
+ }catch(err){safeError(res,err);}
+});
 // Runtime licenses do not use browser cookies. Every delivery verifies the paid account.
 app.get('/api/loader/:sku',loaderLimiter,licenseLoaderLimiter,async(req,res)=>{
  const sku=String(req.params.sku),key=String(req.query.key||'');
