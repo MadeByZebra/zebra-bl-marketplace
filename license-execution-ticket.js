@@ -28,8 +28,8 @@ export async function redeemExecutionTicket({query,token,sku,at}){
  // Atomic compare-and-set ensures only one invocation can succeed.
  const consumed=await query(`UPDATE license_execution_tickets SET consumed_at=$1
   WHERE token_hash=$2 AND sku=$3
-  AND consumed_at IS NULL AND expires_at>$1 RETURNING license_id`,
-  [at,tokenHash,sku]);
+  AND consumed_at IS NULL AND expires_at>$4 RETURNING license_id`,
+  [at,tokenHash,sku,at]);
  return consumed[0]?.license_id===id?id:null;
 }
 export function wrapLuaWithTicket(source,url,licenseId,sku){
