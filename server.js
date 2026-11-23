@@ -649,8 +649,8 @@ app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
   if(!await entitlementIsPaid(req.user.id,sku))return res.status(403).json({error:'Verified purchase required. No license was issued.'});
   const key='ZBL_'+randomBytes(28).toString('hex');
   await rotateLicenseAtomically({pool,sqlite,userId:req.user.id,sku,
-   licenseId:randomUUID(),tokenHash:sha(key),at:now(),maxKeysPerWeek:3});
-  res.json({loadstring:buyerLoadstring(sku,key),note:'Your purchase allows Roblox main and alt accounts on one approved installation. Run the loader, then approve its 10-character code in My Library. A replacement key revokes previous keys. Maximum three keys per seven days.'});
+   licenseId:randomUUID(),tokenHash:sha(key),at:now(),maxKeysPerWeek:4});
+  res.json({loadstring:buyerLoadstring(sku,key),note:'Your purchase allows Roblox main and alt accounts on one approved installation. Run the loader, then approve its 10-character code in My Library. A replacement key revokes previous keys. Up to four keys per seven days, including one additional recovery attempt.'});
  }catch(e){
   if(e instanceof LicenseRotationLimitError)return res.status(429).json({error:e.message});
   safeError(res,e);
@@ -675,7 +675,7 @@ app.get('/api/license-status/:sku',requireUser,async(req,res)=>{
    first_used_at:bound?.first_seen_at?Number(bound.first_seen_at):null,
    last_used_at:bound?.last_seen_at?Number(bound.last_seen_at):null,
    blocked_network_attempts:bound?Number(bound.blocked_attempts||0):0,
-   keys_issued_last_7_days:Number(recent[0]?.n||0),max_keys_per_7_days:3,
+   keys_issued_last_7_days:Number(recent[0]?.n||0),max_keys_per_7_days:4,
    protection_enabled:process.env.ENFORCE_LICENSE_NETWORK_BINDING==='1'&&!deviceApprovalActive(),
    device_approval_enabled:deviceApprovalActive(),
    device_approved:!!device,
