@@ -110,7 +110,7 @@ test('shop purchase confirmation uses official business contact and not a buyer 
   supportEmail:'support-fixture@example.com',
   receiptUrl:'https://pay.stripe.com/receipts/demo'
  });
- assert.match(m,/Questions\? Contact BL Scripts Support: zebrablshopofficial@gmail\.com/);
+ assert.match(m,/Questions\? Contact BL Scripts Support: support-fixture@example\.com/);
  assert.match(m,/Official Stripe receipt:/);
  assert.match(m,/Paid: \$1\.99 USD/);
  const fallback=receiptEmail({name:'Test',totalCents:199,orderId:'test',
