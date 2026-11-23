@@ -45,5 +45,5 @@ test('new contrast stylesheet version is loaded on all shopper and support pages
   'index.html','scripts/index.html','checkout/index.html','account/index.html','order/index.html',
   'zflag/index.html','support/index.html','privacy/index.html','terms/index.html','support/inbox/index.html'
  ];
- for(const page of pages){const v=page==='scripts/index.html'?'dark-card-contrast3':'light-contrast2';assert.ok(read(page).includes('/brand.css?v=20261123-'+v),page);}
+ for(const page of pages){const v=page==='scripts/index.html'?'dark-card-contrast4':'light-contrast2';assert.ok(read(page).includes('/brand.css?v=20261123-'+v),page);}
 });

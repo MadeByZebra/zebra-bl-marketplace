@@ -30,6 +30,7 @@ test('theme palette is local to dark copy column, not the featured pale artwork'
  assert.match(blackCss,/\.zebra-v8 \.card,\.zebra-v8 \.product-card,\.zebra-v8 \.bundle-card\{background:#080808!important/);
  assert.match(css,/html\[data-theme="light"\] body\.scripts-page \.product-card \.product-copy/);
  assert.match(css,/html\[data-theme="light"\] body\.scripts-page \.bundle-card/);
+ assert.match(css,/html\[data-theme="light"\] body\.scripts-page \.promo-notice/);
  assert.match(css,/html\[data-theme="light"\] body\.scripts-page \.dialog/);
  assert.match(css,/--text:#f7f7f7/);
  assert.match(css,/--muted:#c2c2c2/);
@@ -55,7 +56,7 @@ test('dark product popup and purchase buttons keep legible light-mode labels',()
  assert.match(css,/color:#f7f7f7!important/);
  assert.match(css,/color:#c2c2c2!important/);
  assert.match(css,/background:#f2f2ef!important/);
- assert.match(shop,/\/brand\.css\?v=20261123-dark-card-contrast3/);
+ assert.match(shop,/\/brand\.css\?v=20261123-dark-card-contrast4/);
 });
 
 test('contrast correction does not change checkout and retains theme separation',()=>{
