@@ -31,7 +31,7 @@ test('four issuance attempts are allowed by the protected paid route while retai
  assert.match(server,/keys_issued_last_7_days:Number\(recent\[0\]\?\.n\|\|0\),max_keys_per_7_days:4/);
  assert.match(server,/rotateLicenseAtomically/);
  const terms=read('public/terms/index.html');
- assert.match(terms,/four personal keys per product/);
+ assert.match(terms,/four per product in a rolling seven-day period/);
  assert.doesNotMatch(server,/\bmaxKeysPerWeek:0\b/);
 });
 
