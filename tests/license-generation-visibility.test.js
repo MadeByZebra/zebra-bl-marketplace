@@ -19,7 +19,7 @@ test('successful personal command is visibly revealed, scrolls into view and off
  assert.match(js,/result\.scrollIntoView\?/);
  assert.match(js,/navigator\.clipboard\.writeText\(data\.loadstring\)/);
  assert.match(js,/const copy=element\('button','Copy loadstring'/);
- assert.match(js,/const download=element\('button','Download \.txt'/);
+ assert.match(js,/download=element\('button','Download \.txt'/);
  assert.match(js,/No replacements left this week/);
  assert.match(js,/loadQuota|refreshQuota/);
  assert.match(read('public/brand.css'),/\.commerce-loader-card:not\(\[hidden\]\):not\(\.commerce-device-pairing\)/);
