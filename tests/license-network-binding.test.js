@@ -72,7 +72,7 @@ test('server checks paid entitlement and network binding before sending any payl
  assert.match(s,/await entitlementIsPaid\(found\.user_id,sku\)/);
  assert.match(s,/hashedNetwork\(req\.ip,found\.id\)/);
  assert.match(s,/await authorizeNetwork\(\{pool,sqlite,licenseId:found\.id,networkHash,at:now\(\)\}\)/);
- assert.match(s,/maxKeysPerWeek:3/);
+ assert.match(s,/maxKeysPerWeek:4/);
  assert.match(s,/app\.get\('\/api\/license-status\/:sku',requireUser/);
  assert.match(s,/blocked_network_attempts/);
 });
