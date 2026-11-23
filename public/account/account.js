@@ -191,14 +191,14 @@
         const pairing=element('section',undefined,'commerce-loader-card commerce-device-pairing');
         const heading=element('strong','ACTIVATE YOUR PURCHASED INSTALLATION');
         heading.className='commerce-eyebrow';
-        const pairHelp=element('p','The 10-character activation code is NOT emailed and does NOT appear automatically in My Library. It appears in the Roblox F9 Developer Console (Client log) when your executor supports it, and in the executor console/output after you run your newest personal loadstring. The loader also tries to show an in-game notification. Enter the code below within 10 minutes. Your main and alt accounts can use the same approved installation.','commerce-muted');
+        const pairHelp=element('p','The 10-character activation code is NOT emailed and does NOT appear automatically in My Library. It appears in the Roblox F9 Developer Console (Client log) when your executor supports it, and in the executor console/output after you run your newest personal loadstring. The loader displays a black-and-white activation panel inside Roblox with the code and a Copy Code button, if your client allows custom UI. Closing that panel will not close Roblox. F9 and executor output remain backups. Enter the code below within 10 minutes. Your main and alt accounts can use the same approved installation.','commerce-muted');
         const steps=element('ol',undefined,'commerce-activation-steps');
         for(const message of [
           'Use your saved newest personal loadstring. Only click Generate / replace if you lost it, because generating again revokes the old key.',
-          'Run that command in-game. Press F9 to check Roblox Developer Console > Client, or open your executor output. Look for “[BL Scripts] ACTIVATION CODE” followed by the 10-character code.',
+          'Run the command in-game. The BL Scripts activation panel should show the code. Click Copy Code, enter it below, and close only that panel. If it does not appear, press F9 > Client or check the executor output for “[BL Scripts] ACTIVATION CODE”.',
           'Copy the code into the box below, choose Approve installation, then run the SAME personal loadstring again.'
         ])steps.append(element('li',message));
-        const noCode=element('p','No code in F9? Check the Client tab (not Server) and your executor console. Some executors do not forward messages to F9. If you see an error, contact Support with the error text only. Never post your personal license or activation code publicly.','commerce-muted');
+        const noCode=element('p','No activation panel or code? Check the F9 Client log or your executor console. Some executors block custom UI or do not forward messages to F9. Avoid closing an external CMD window, since it may also close Roblox. If you see an error, contact Support with the error text only. Never post your personal license or activation code publicly.','commerce-muted');
         const form=element('form',undefined,'commerce-form');
         const codeLabel=element('label','Activation code (10 characters)');
         const codeInput=element('input');
@@ -237,7 +237,7 @@
             const available=Math.max(0,details.max_keys_per_7_days-details.keys_issued_last_7_days);
             securityNote.textContent=(details.issued
               ?details.device_approval_enabled
-                ?details.device_approved?'Active: installation approved. Your main and alt Roblox accounts can use the newest loadstring on this installation.':'Activation still pending. Run your newest personal loadstring in-game to see the 10-character code in the executor output, then approve it here.'
+                ?details.device_approved?'Active: installation approved. Your main and alt Roblox accounts can use the newest loadstring on this installation.':'Activation still pending. Run your newest personal loadstring in-game to see its in-game panel or F9 activation code, then approve it here.'
                 :details.network_bound?'Active: one network locked to this license.':'Issued: first use will bind your network.'
               :'No personal license issued yet.')+
               ' Replacement keys available in the next seven-day window: '+available+'.'+
