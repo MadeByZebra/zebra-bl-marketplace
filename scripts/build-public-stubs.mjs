@@ -12,7 +12,10 @@ for(const product of products.filter(x=>!x.unavailable&&x.file)){
  const source=path.join(ROOT,'loaders',filename);
  const code=fs.readFileSync(source,'utf8');
  if(!code.includes('ZebraLicense')||!code.includes('ZebraInstallSecret')||
-    !code.includes('&device=')||code.includes('ZEBRA_PAYLOAD_KEY'))
+    !code.includes('&device=')||!code.includes('ACTIVATION CODE:')||
+    (code.match(/local _u=table\.concat\(_b\)/g)||[]).length!==1||
+    (code.match(/local _ok,_src=pcall/g)||[]).length!==1||
+    code.includes('ZEBRA_PAYLOAD_KEY'))
    throw Error('Refusing to publish an outdated or unsafe loader: '+filename);
  fs.writeFileSync(path.join(output,filename),code,{mode:0o644});
 }
