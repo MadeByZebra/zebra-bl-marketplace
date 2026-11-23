@@ -16,7 +16,7 @@ test('checkout and order pages use existing true-black branding with original sc
   assert.match(html,/class="zebra-v8/);
   assert.match(html,/zebra-true-black-v8\.css/);
   assert.match(html,/commerce\.css/);
-  assert.match(html,/ZEBRA’S SHOP/);
+  assert.match(html,/class="brand-logo" src="\/assets\/bl-scripts-logo\.svg\?v=1"/);
   assert.match(html,/href="\/support\//);
  }
  assert.match(checkout,/Order information/);
