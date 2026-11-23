@@ -92,11 +92,16 @@
         generate.type='button';
         const result=element('section',undefined,'commerce-loader-card');
         result.hidden=true;
+        // A failed request must never hide its ONLY message inside the hidden
+        // output panel (which is what made the prior behavior look broken).
+        const generationStatus=element('p','Checking your license replacement quota…','account-alert commerce-generation-status');
+        generationStatus.setAttribute('role','status');
+        generationStatus.setAttribute('aria-live','polite');
         const label=element('strong','PERSONAL LOADSTRING — KEEP PRIVATE');
         label.className='commerce-eyebrow';
-        const explanation=element('p','A personal loadstring works on your main and alt Roblox accounts on the same approved installation. If activation is required, run the newest loadstring, then approve its 10-character code below. Replacing a key revokes older versions. Limit: three keys per seven days.','commerce-muted');
+        const explanation=element('p','Each new personal command revokes all older versions. Maximum four commands per seven days, including an extra recovery attempt. Copy or save your newest command before leaving. It works on your approved installation with your Roblox main and alt accounts.','commerce-muted');
         const area=element('textarea');
-        area.readOnly=true;area.spellcheck=false;
+        area.readOnly=true;area.spellcheck=false;area.rows=4;area.setAttribute('autocomplete','off');
         area.setAttribute('aria-label',product.title+' private loadstring');
         const actions=element('div',undefined,'commerce-actions');
         const copy=element('button','Copy loadstring','btn'),download=element('button','Download .txt','btn');
@@ -104,23 +109,62 @@
         const feedback=element('p',undefined,'account-alert');
         actions.append(copy,download);
         result.append(label,explanation,area,actions,feedback);
+        let generating=false;
+        const showGenerationMessage=(message,isError=false)=>{
+          generationStatus.textContent=message;
+          generationStatus.classList.toggle('error',Boolean(isError));
+        };
+        const refreshQuota=async()=>{
+          const info=await api('/api/license-status/'+encodeURIComponent(sku));
+          const remaining=Math.max(0,Number(info.max_keys_per_7_days)-Number(info.keys_issued_last_7_days));
+          if(!generating)generate.disabled=remaining===0;
+          generate.textContent=remaining===0?'Replacement limit reached':'Generate / replace loadstring ↗';
+          return remaining;
+        };
+        // This is read-only and never rotates a paid key.
+        refreshQuota().then(remaining=>{
+          showGenerationMessage(remaining>0
+            ?remaining+' personal key replacement'+(remaining===1?'':'s')+' remaining this week. Generating a new one revokes your old command.'
+            :'No key replacements remaining this week. Your purchase is still yours. Contact Support if you lost your newest command.',remaining===0);
+        }).catch(()=>showGenerationMessage('Unable to check key quota. A generation attempt will report the exact server response.',true));
         generate.addEventListener('click',async()=>{
           if(!window.confirm('Generate a NEW personal loadstring for '+product.title+'? IMPORTANT: this REVOKES the previous command even if it works. If you already have your newest command saved, press Cancel and use it instead. You do not have to buy again.'))return;
-          generate.disabled=true;
-          feedback.textContent='Verifying your purchase and rotating your private license…';
-          feedback.classList.remove('error');
+          generating=true;generate.disabled=true;
+          showGenerationMessage('Verifying your paid purchase and creating a new private command…');
           try{
             const data=await api('/api/license/'+encodeURIComponent(sku),{method:'POST',body:'{}'});
             if(typeof data.loadstring!=='string'||!data.loadstring.includes('ZebraLicense'))throw new Error('The server did not return a valid personal loader.');
             area.value=data.loadstring;
             result.hidden=false;
-            generate.textContent='Rotate license ↗';
-            feedback.textContent='New personal command ready. Save/copy THIS version; every older version is now invalid. Run it in-game to get an activation code.';
-            alert('Personal loader created for '+product.title+'. Keep it private.');
-          }catch(error){
-            feedback.classList.add('error');feedback.textContent=error.message;
-            alert(error.message,true);
-          }finally{generate.disabled=false;}
+            feedback.textContent='SAVE THIS COMMAND! It is the only newest active version. Previous keys are revoked.';
+            // Clipboard access is optional and may be blocked by browser policy.
+            let copied=false;
+            try{
+              if(navigator.clipboard?.writeText){
+                await navigator.clipboard.writeText(data.loadstring);
+                copied=true;
+              }
+            }catch(_ignored){/* The visible Copy and Download controls remain available. */}
+            result.scrollIntoView?.({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+            area.focus({preventScroll:true});
+            showGenerationMessage(copied
+              ?'Success! Your personal loadstring is displayed below AND copied to your clipboard. Save it now.'
+              :'Success! Your personal loadstring is displayed below. Click Copy loadstring or Download .txt to save it.');
+            alert('Private loadstring created. Look at the command box below FPS Optimizer.');
+           }catch(error){
+            // This visible status is OUTSIDE the result[hidden] panel.
+            showGenerationMessage('Generation failed: '+error.message,true);
+            alert('FPS Optimizer: '+error.message,true);
+          }finally{
+            generating=false;
+            try{
+              const remaining=await refreshQuota();
+              if(!area.value||remaining===0){
+                if(remaining===0&&!area.value)
+                  showGenerationMessage('No replacements left this week. Your purchase is still valid, but you must contact Support if you lost the latest personal command.',true);
+              }
+            }catch(_ignored){generate.disabled=false;}
+          }
         });
         copy.addEventListener('click',async()=>{
           if(!area.value)return;
@@ -205,7 +249,7 @@
           finally{checkStatus.disabled=false;}
         });
         controls.append(generate,checkStatus);
-        row.append(result,pairing,securityNote);
+        row.append(generationStatus,result,pairing,securityNote);
       }
       row.prepend(info);
       const output=row.querySelector('.commerce-loader-card');
