@@ -55,7 +55,7 @@
   const body=element('div',undefined,'commerce-delivered-body');
   const msg=item.kind==='download'
    ?'Your installer is available only while this account has an active, verified entitlement.'
-   :'Generate a personal command to access this product. Generating a new command revokes the prior license for this product.';
+   :'View your existing paid personal command below. Viewing never rotates the key or requires another payment. New-installation activation happens only once.';
   body.append(element('p',msg));
   if(item.kind==='download'){
    const a=element('a','Download verified installer ↗','commerce-button commerce-secondary');
@@ -63,7 +63,7 @@
   }else if(item.testOnly){
    body.append(element('p','Diagnostic purchase only. No software is included.'));
   }else{
-   const gen=element('button','Generate personal loadstring ↗','commerce-button commerce-secondary');
+   const gen=element('button','View my purchased loadstring ↗','commerce-button commerce-secondary');
    gen.type='button';
    const output=element('div',undefined,'commerce-license-output');
    output.hidden=true;
@@ -77,17 +77,27 @@
    output.append(label,area,controls,feedback,element('p','If the script asks you to approve this installation, sign in to My Library and enter the activation code. Main and alt Roblox accounts can share an approved installation. Do not share this personal command.','commerce-muted'));
 
    gen.addEventListener('click',async()=>{
-    if(state.secretCache.has(item.id)&&!confirm('Generating another loadstring revokes the previous one. Continue?'))return;
-    gen.disabled=true;gen.textContent='Verifying paid access…';
+    gen.disabled=true;gen.textContent='Verifying your paid purchase…';
     try{
-     const d=await api('/api/license/'+encodeURIComponent(item.id),{method:'POST',body:'{}'});
-     if(typeof d.loadstring!=='string'||!d.loadstring.includes('ZebraLicense'))throw Error('Invalid license response.');
+     const status=await api('/api/license-status/'+encodeURIComponent(item.id));
+     let d;
+     if(!status.issued){
+      d=await api('/api/license/'+encodeURIComponent(item.id),{method:'POST',body:'{}'});
+     }else if(status.current_command_retrievable){
+      d=await api('/api/license/'+encodeURIComponent(item.id)+'/current');
+     }else{
+      if(!confirm('Your older command is not retrievable. Recover the paid key once? The old command stops working, but approval remains and no replacement is consumed.'))return;
+      d=await api('/api/license/'+encodeURIComponent(item.id)+'/recover',{method:'POST',body:'{}'});
+     }
+     if(typeof d.loadstring!=='string'||!d.loadstring.includes('ZebraLicense'))throw Error('Invalid private command response.');
      state.secretCache.set(item.id,d.loadstring);
      area.value=d.loadstring;output.hidden=false;
-     noteInner(feedback,'New personal command created. Every older key is REVOKED. Copy or download the personal loadstring displayed below BEFORE leaving. Run it, then approve any 10-character installation code in My Library. No additional purchase is needed.');
-     gen.textContent='Rotate license ↗';
-    }catch(error){note('orderNotice',error.message,true);gen.textContent=state.secretCache.has(item.id)?'Rotate license ↗':'Generate personal loadstring ↗';}
-    finally{gen.disabled=false;}
+     noteInner(feedback,d.recovered
+      ?'Recovered your purchased command. Approved installation preserved. You can view this command again from My Library.'
+      :'Current purchased command retrieved. No new payment, key rotation or repeated installation approval.');
+     output.scrollIntoView?.({behavior:window.matchMedia?.('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'center'});
+    }catch(error){note('orderNotice',error.message,true);}
+    finally{gen.disabled=false;gen.textContent='View my purchased loadstring ↗';}
    });
    copy.addEventListener('click',async()=>{
     try{await copyText(area.value);noteInner(feedback,'Copied. Do not share your license.');}

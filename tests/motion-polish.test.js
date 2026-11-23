@@ -12,7 +12,7 @@ const routes=[
 test('smooth motion styles and interactions load on all public shop pages without removing brand layer',()=>{
  for(const name of routes){
   const s=read(name);
-  assert.match(s,/href="\/brand\.css\?v=20261123a"/,name);
+  assert.match(s,/href="\/brand\.css\?v=20261123(?:a|-permanent1)"/,name);
   assert.match(s,/href="\/zebra-motion\.css\?v=20261123a"/,name);
   assert.match(s,/src="\/zebra-motion\.js\?v=20261123a" defer/,name);
   const css=s.indexOf('/brand.css'),motion=s.indexOf('/zebra-motion.css');

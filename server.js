@@ -24,6 +24,7 @@ import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.
 import {stripeKeyMode,stripeKeyType} from './stripe-key-mode.js';
 import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
 import {rotateLicenseAtomically,LicenseRotationLimitError} from './license-rotation.js';
+import {recoverableKeyForLicense,isRecoverableLicense,upgradeLegacyLicenseInPlace,MissingActiveLicenseError} from './recoverable-license.js';
 import {hashedNetwork,authorizeNetwork} from './license-network-binding.js';
 import {validDeviceSecret,validPairingCode,requestDeviceApproval,approveInstallation} from './license-device-approval.js';
 import {issueExecutionTicket,redeemExecutionTicket,wrapLuaWithTicket} from './license-execution-ticket.js';
@@ -641,15 +642,48 @@ async function entitlementIsPaid(userId,sku){
  }
  return false;
 }
+// The paying account can view its active command without a reset or new purchase.
+app.get('/api/license/:sku/current',licenseLimiter,requireUser,async(req,res)=>{
+ const sku=String(req.params.sku||'');
+ if(!products.some(p=>p.id===sku&&!p.unavailable)||payloadReadiness.products[sku]!=='verified')return res.sendStatus(404);
+ try{
+  if(!await entitlementIsPaid(req.user.id,sku))return res.status(403).json({error:'Verified purchase required.'});
+  const active=(await query('SELECT id,user_id,sku,token_hash FROM licenses WHERE user_id=$1 AND sku=$2 AND revoked_at IS NULL',
+   [req.user.id,sku]))[0];
+  if(!active)return res.status(404).json({error:'No command issued. Create your first personal command in My Library.'});
+  if(!isRecoverableLicense(active,process.env.ZEBRA_PAYLOAD_KEY))
+   return res.status(409).json({error:'This older command cannot be viewed again. Select Recover purchased command once. Your approved installation will be preserved.'});
+  return res.json({loadstring:buyerLoadstring(sku,recoverableKeyForLicense(active,process.env.ZEBRA_PAYLOAD_KEY)),
+   existing:true,rotated:false});
+ }catch(e){safeError(res,e);}
+});
+// One-time legacy upgrade retains license ID, device approval and payment.
+// The old personal key becomes invalid; the new one is retrievable forever.
+app.post('/api/license/:sku/recover',licenseLimiter,requireUser,async(req,res)=>{
+ const sku=String(req.params.sku||'');
+ if(!products.some(p=>p.id===sku&&!p.unavailable)||payloadReadiness.products[sku]!=='verified')return res.sendStatus(404);
+ try{
+  if(!await entitlementIsPaid(req.user.id,sku))return res.status(403).json({error:'Verified purchase required.'});
+  const recovered=await upgradeLegacyLicenseInPlace({pool,sqlite,userId:req.user.id,sku,rawSecret:process.env.ZEBRA_PAYLOAD_KEY});
+  res.json({loadstring:buyerLoadstring(sku,recovered.token),existing:!recovered.upgraded,
+   recovered:recovered.upgraded,rotated:false,
+   note:recovered.upgraded?'Your old key was replaced once, with device approval preserved. You can view this active command later without generating again.'
+    :'This current key can always be viewed without consuming a replacement.'});
+ }catch(e){
+  if(e instanceof MissingActiveLicenseError)return res.status(404).json({error:e.message});
+  safeError(res,e);
+ }
+});
 // Buyer rotates license as needed; full key is deliberately never kept in our database.
 app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
  const sku=String(req.params.sku);
  if(!products.some(p=>p.id===sku&&!p.unavailable)||payloadReadiness.products[sku]!=='verified')return res.sendStatus(404);
  try{
   if(!await entitlementIsPaid(req.user.id,sku))return res.status(403).json({error:'Verified purchase required. No license was issued.'});
-  const key='ZBL_'+randomBytes(28).toString('hex');
+  const id=randomUUID();
+  const key=recoverableKeyForLicense({id,user_id:req.user.id,sku},process.env.ZEBRA_PAYLOAD_KEY);
   await rotateLicenseAtomically({pool,sqlite,userId:req.user.id,sku,
-   licenseId:randomUUID(),tokenHash:sha(key),at:now(),maxKeysPerWeek:4});
+   licenseId:id,tokenHash:sha(key),at:now(),maxKeysPerWeek:4});
   res.json({loadstring:buyerLoadstring(sku,key),note:'Your purchase allows Roblox main and alt accounts on one approved installation. Run the loader, then approve its 10-character code in My Library. A replacement key revokes previous keys. Up to four keys per seven days, including one additional recovery attempt.'});
  }catch(e){
   if(e instanceof LicenseRotationLimitError)return res.status(429).json({error:e.message});
@@ -662,7 +696,7 @@ app.get('/api/license-status/:sku',requireUser,async(req,res)=>{
  if(!products.some(p=>p.id===sku&&!p.unavailable))return res.sendStatus(404);
  try{
   if(!await entitlementIsPaid(req.user.id,sku))return res.sendStatus(403);
-  const rows=await query(`SELECT l.id,l.created_at,l.last_used_at,
+  const rows=await query(`SELECT l.id,l.user_id,l.sku,l.token_hash,l.created_at,l.last_used_at,
     b.first_seen_at,b.last_seen_at,b.blocked_attempts
     FROM licenses l LEFT JOIN license_network_bindings b ON b.license_id=l.id
     WHERE l.user_id=$1 AND l.sku=$2 AND l.revoked_at IS NULL`,[req.user.id,sku]);
@@ -670,8 +704,11 @@ app.get('/api/license-status/:sku',requireUser,async(req,res)=>{
     [req.user.id,sku,now()-7*24*60*60*1000]);
   const bound=rows[0];
   const device=bound?.id?(await query('SELECT approved_at,last_used_at,blocked_attempts FROM license_device_bindings WHERE license_id=$1',[bound.id]))[0]:null;
+  const recoverable=!!bound&&isRecoverableLicense(bound,process.env.ZEBRA_PAYLOAD_KEY);
   res.json({
-   issued:!!bound,network_bound:!!bound?.first_seen_at,
+   issued:!!bound,current_command_retrievable:recoverable,
+   legacy_recovery_available:!!bound&&!recoverable,
+   network_bound:!!bound?.first_seen_at,
    first_used_at:bound?.first_seen_at?Number(bound.first_seen_at):null,
    last_used_at:bound?.last_seen_at?Number(bound.last_seen_at):null,
    blocked_network_attempts:bound?Number(bound.blocked_attempts||0):0,
