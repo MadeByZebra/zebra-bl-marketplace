@@ -90,16 +90,18 @@
       }else{
         const generate=element('button','Generate / replace loadstring ↗','btn');
         generate.type='button';
+        const view=element('button','View my loadstring ↗','btn primary');
+        view.type='button';view.disabled=true;
         const result=element('section',undefined,'commerce-loader-card');
         result.hidden=true;
         // A failed request must never hide its ONLY message inside the hidden
         // output panel (which is what made the prior behavior look broken).
-        const generationStatus=element('p','Checking your license replacement quota…','account-alert commerce-generation-status');
+        const generationStatus=element('p','Checking your paid license…','account-alert commerce-generation-status');
         generationStatus.setAttribute('role','status');
         generationStatus.setAttribute('aria-live','polite');
         const label=element('strong','PERSONAL LOADSTRING — KEEP PRIVATE');
         label.className='commerce-eyebrow';
-        const explanation=element('p','Each new personal command revokes all older versions. Maximum four commands per seven days, including an extra recovery attempt. Copy or save your newest command before leaving. It works on your approved installation with your Roblox main and alt accounts.','commerce-muted');
+        const explanation=element('p','This is your private purchased command. You can view it again from your signed-in account without generating or paying again. A separate key replacement is only for a lost or leaked key. Your approved installation works with Roblox main and alt accounts.','commerce-muted');
         const area=element('textarea');
         area.readOnly=true;area.spellcheck=false;area.rows=4;area.setAttribute('autocomplete','off');
         area.setAttribute('aria-label',product.title+' private loadstring');
@@ -110,60 +112,99 @@
         actions.append(copy,download);
         result.append(label,explanation,area,actions,feedback);
         let generating=false;
+        let currentInfo=null;
         const showGenerationMessage=(message,isError=false)=>{
           generationStatus.textContent=message;
           generationStatus.classList.toggle('error',Boolean(isError));
         };
+        const showCommand=async(data,note)=>{
+          if(typeof data.loadstring!=='string'||!data.loadstring.includes('ZebraLicense'))
+            throw new Error('The server did not return a valid personal loader.');
+          area.value=data.loadstring;
+          result.hidden=false;
+          feedback.textContent=note||'This is your current purchased command. Keep it private.';
+          let copied=false;
+          try{
+            if(navigator.clipboard?.writeText){
+              await navigator.clipboard.writeText(data.loadstring);
+              copied=true;
+            }
+          }catch(_ignored){/* Copy and Download remain available. */}
+          result.scrollIntoView?.({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+          area.focus({preventScroll:true});
+          showGenerationMessage(copied
+            ?'Your personal loadstring is shown below and copied to your clipboard.'
+            :'Your personal loadstring is shown below. Click Copy loadstring or Download .txt.');
+        };
         const refreshQuota=async()=>{
           const info=await api('/api/license-status/'+encodeURIComponent(sku));
+          currentInfo=info;
           const remaining=Math.max(0,Number(info.max_keys_per_7_days)-Number(info.keys_issued_last_7_days));
           if(!generating)generate.disabled=remaining===0;
-          generate.textContent=remaining===0?'Replacement limit reached':'Generate / replace loadstring ↗';
+          generate.textContent=remaining===0?'Replacement limit reached':'Replace key (only if leaked) ↗';
+          view.disabled=false;
+          view.textContent=!info.issued?'Create first command ↗':
+            info.current_command_retrievable?'View my loadstring ↗':'Recover purchased loadstring ↗';
+          pairing.hidden=Boolean(info.device_approval_enabled&&info.device_approved);
+          if(info.device_approval_enabled&&info.device_approved){
+            approvedStatus.hidden=false;
+          }else approvedStatus.hidden=true;
+          if(info.current_command_retrievable){
+            showGenerationMessage('Paid license active. View your loadstring any time without another purchase, replacement, or activation code.'+
+              (remaining===0?' The weekly limit affects NEW replacement keys only.':''));
+          }else if(info.legacy_recovery_available){
+            showGenerationMessage('Paid license active'+(info.device_approved?' and installation already approved':'')+
+              '. Your older command predates permanent retrieval. Select Recover purchased loadstring once; this preserves installation approval and does not use a replacement.');
+          }else if(info.issued){
+            showGenerationMessage('Purchased license active. Select View my loadstring to retrieve the command.');
+          }else{
+            showGenerationMessage('Purchase verified. Create your first command to get started.');
+            generate.disabled=true;
+          }
           return remaining;
         };
-        // This is read-only and never rotates a paid key.
-        refreshQuota().then(remaining=>{
-          showGenerationMessage(remaining>0
-            ?remaining+' personal key replacement'+(remaining===1?'':'s')+' remaining this week. Generating a new one revokes your old command.'
-            :'No key replacements remaining this week. Your purchase is still yours. Contact Support if you lost your newest command.',remaining===0);
-        }).catch(()=>showGenerationMessage('Unable to check key quota. A generation attempt will report the exact server response.',true));
+        // This read-only request never issues or rotates a buyer key.
+        view.addEventListener('click',async()=>{
+          if(generating)return;
+          generating=true;view.disabled=true;generate.disabled=true;
+          showGenerationMessage('Checking paid ownership and fetching your personal command…');
+          try{
+            const info=currentInfo||await api('/api/license-status/'+encodeURIComponent(sku));
+            let data;
+            if(!info.issued){
+              data=await api('/api/license/'+encodeURIComponent(sku),{method:'POST',body:'{}'});
+            }else if(info.current_command_retrievable){
+              data=await api('/api/license/'+encodeURIComponent(sku)+'/current');
+            }else{
+              if(!window.confirm('Your older paid key cannot be displayed again. Recover it once? This changes the OLD loadstring but keeps your approved installation and does not consume a weekly key replacement.'))return;
+              data=await api('/api/license/'+encodeURIComponent(sku)+'/recover',{method:'POST',body:'{}'});
+            }
+            await showCommand(data,data.recovered
+              ?'Recovered! Your former command is invalid, but your approved installation is preserved. This command can be viewed again any time.'
+              :'Current paid command retrieved — no new purchase, no key rotation, and no new activation.');
+          }catch(error){
+            showGenerationMessage('Could not show your command: '+error.message,true);
+            alert('Could not show loadstring: '+error.message,true);
+          }finally{
+            generating=false;
+            await refreshQuota().catch(()=>{view.disabled=false;generate.disabled=false;});
+          }
+        });
+        refreshQuota().catch(()=>showGenerationMessage('Could not check the current license. Try View my loadstring or contact Support.',true));
         generate.addEventListener('click',async()=>{
           if(!window.confirm('Generate a NEW personal loadstring for '+product.title+'? IMPORTANT: this REVOKES the previous command even if it works. If you already have your newest command saved, press Cancel and use it instead. You do not have to buy again.'))return;
           generating=true;generate.disabled=true;
-          showGenerationMessage('Verifying your paid purchase and creating a new private command…');
+          showGenerationMessage('Verifying your purchase and replacing your key…');
           try{
             const data=await api('/api/license/'+encodeURIComponent(sku),{method:'POST',body:'{}'});
-            if(typeof data.loadstring!=='string'||!data.loadstring.includes('ZebraLicense'))throw new Error('The server did not return a valid personal loader.');
-            area.value=data.loadstring;
-            result.hidden=false;
-            feedback.textContent='SAVE THIS COMMAND! It is the only newest active version. Previous keys are revoked.';
-            // Clipboard access is optional and may be blocked by browser policy.
-            let copied=false;
-            try{
-              if(navigator.clipboard?.writeText){
-                await navigator.clipboard.writeText(data.loadstring);
-                copied=true;
-              }
-            }catch(_ignored){/* The visible Copy and Download controls remain available. */}
-            result.scrollIntoView?.({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
-            area.focus({preventScroll:true});
-            showGenerationMessage(copied
-              ?'Success! Your personal loadstring is displayed below AND copied to your clipboard. Save it now.'
-              :'Success! Your personal loadstring is displayed below. Click Copy loadstring or Download .txt to save it.');
-            alert('Private loadstring created. Look at the command box below FPS Optimizer.');
-           }catch(error){
-            // This visible status is OUTSIDE the result[hidden] panel.
+            await showCommand(data,'New personal command created. The previous command is revoked. You can view this one again without rotating.');
+            alert('New private loadstring created. Copy it from below.');
+          }catch(error){
             showGenerationMessage('Generation failed: '+error.message,true);
-            alert('FPS Optimizer: '+error.message,true);
+            alert('Could not replace your key: '+error.message,true);
           }finally{
             generating=false;
-            try{
-              const remaining=await refreshQuota();
-              if(!area.value||remaining===0){
-                if(remaining===0&&!area.value)
-                  showGenerationMessage('No replacements left this week. Your purchase is still valid, but you must contact Support if you lost the latest personal command.',true);
-              }
-            }catch(_ignored){generate.disabled=false;}
+            await refreshQuota().catch(()=>{generate.disabled=false;});
           }
         });
         copy.addEventListener('click',async()=>{
@@ -189,6 +230,10 @@
         });
         // Buyer approval happens in this signed-in browser, never in Roblox.
         const pairing=element('section',undefined,'commerce-loader-card commerce-device-pairing');
+        const approvedStatus=element('section',
+          'INSTALLATION APPROVED  •  One-time activation complete. No code is needed on each Roblox launch or auto-execute. Your main and alt accounts can use this approved installation, provided its local installation file stays intact and the paid license remains valid.',
+          'commerce-approved-installation');
+        approvedStatus.hidden=true;
         const heading=element('strong','ACTIVATE YOUR PURCHASED INSTALLATION');
         heading.className='commerce-eyebrow';
         const pairHelp=element('p','The 10-character activation code is NOT emailed and does NOT appear automatically in My Library. It appears in the Roblox F9 Developer Console (Client log) when your executor supports it, and in the executor console/output after you run your newest personal loadstring. The loader displays a black-and-white activation panel inside Roblox with the code and a Copy Code button, if your client allows custom UI. Closing that panel will not close Roblox. F9 and executor output remain backups. Enter the code below within 10 minutes. Your main and alt accounts can use the same approved installation.','commerce-muted');
@@ -219,8 +264,9 @@
             if(!/^[A-F0-9]{10}$/.test(code))throw new Error('Enter the 10-character code shown in your game console.');
             const result=await api('/api/approve-device/'+encodeURIComponent(sku),
               {method:'POST',body:JSON.stringify({code})});
-            pairFeedback.textContent=result.message||'Approved! Run the SAME newest personal loadstring in-game again.';
+            pairFeedback.textContent=result.message||'Approved! You can now run your newest personal command again, including through auto-execute.';
             codeInput.value='';
+            await refreshQuota();
           }catch(error){pairFeedback.textContent='Approval failed: '+error.message;}
           finally{pairButton.disabled=false;}
         });
@@ -248,11 +294,11 @@
           }catch(err){securityNote.textContent='Could not retrieve license status: '+err.message;}
           finally{checkStatus.disabled=false;}
         });
-        controls.append(generate,checkStatus);
-        row.append(generationStatus,result,pairing,securityNote);
+        controls.append(view,generate,checkStatus);
+        row.append(generationStatus,result,approvedStatus,pairing,securityNote);
       }
       row.prepend(info);
-      const output=row.querySelector('.commerce-loader-card');
+      const output=row.querySelector('.commerce-generation-status')||row.querySelector('.commerce-loader-card');
       if(output)row.insertBefore(controls,output);
       else row.append(controls);
       productsSection.append(row);
