@@ -7,7 +7,7 @@ test('generation errors are outside the hidden secret panel and visible next to 
  const js=read('public/account/account.js'),css=read('public/brand.css');
  assert.match(js,/const generationStatus=element\('p'/);
  assert.match(js,/generationStatus\.setAttribute\('role','status'\)/);
- assert.match(js,/row\.append\(generationStatus,result,approvedStatus,pairing,securityNote\)/);
+ assert.match(js,/row\.append\(setupNote,generationStatus,result,approvedStatus,pairing,securityNote\)/);
  assert.match(js,/showGenerationMessage\('Generation failed: '\+error\.message,true\)/);
  assert.match(css,/\.commerce-account \.commerce-generation-status/);
  assert.match(css,/\.commerce-generation-status\.error/);
