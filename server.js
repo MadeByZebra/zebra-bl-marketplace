@@ -244,7 +244,9 @@ function publicState(){
   mode:configuredForLive()?'live':testMode()?'test':'unconfigured',
   stripe_key_status:stripeAuth,email_login_ready:mailReady()&&usingPostgres&&providerAuth!=='unauthorized'&&providerAuth!=='forbidden',
   email_sender_mode:mailerMode(),email_provider_auth:providerAuth,checkout_message:checkoutStatus(),
-  support_email:process.env.SUPPORT_EMAIL||null,catalog};
+  // The public store API must not expose the shop mailbox; support requests
+   // are routed server-side using process.env.SUPPORT_EMAIL.
+   support_contact_url:'/support/#contact',catalog};
 }
 function safeError(res,err,code=500){console.error(err);return res.status(code).json({error:'Request could not be completed.'});}
 async function fetchUser(req){

@@ -33,7 +33,7 @@
    form.reset();
   }catch(err){
    show((err?.message||'Support email could not be submitted.')+
-    ' Use the Compose in Gmail link below, or check your browser connection and retry.',false);
+    ' Check your connection and retry, or ask for help using the customer-support chat widget.',false);
   }finally{
    button.disabled=false;
    button.textContent='Send support request ↗';

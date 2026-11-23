@@ -214,7 +214,7 @@
     try{await start();}catch(e){showState(e.message,true);}
   });
   document.addEventListener('click',event=>{
-    const a=event.target instanceof Element?event.target.closest('a[data-zebra-email-support],a[href^="mailto:zebrablshopofficial@gmail.com" i]'):null;
+    const a=event.target instanceof Element?event.target.closest('a[data-zebra-email-support]'):null;
     if(a&&!a.hasAttribute('data-zebra-email-client'))a.href=supportUrl;
   },true);
   function mount(){

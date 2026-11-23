@@ -45,12 +45,12 @@ test('shop email supports reply-to without changing fixed recipient',async()=>{
   sent=JSON.parse(options.body);
   return {ok:true,status:201};
  };
- const env={BREVO_API_KEY:'test-provider-key-not-real',BREVO_FROM_EMAIL:'zebrablshopofficial@gmail.com',BREVO_FROM_NAME:"Zebra's Shop"};
- const ret=await sendShopEmail({to:'zebrablshopofficial@gmail.com',replyTo:'customer@example.com',
+ const env={BREVO_API_KEY:'test-provider-key-not-real',BREVO_FROM_EMAIL:'support-fixture@example.com',BREVO_FROM_NAME:"Zebra's Shop"};
+ const ret=await sendShopEmail({to:'support-fixture@example.com',replyTo:'customer@example.com',
    subject:'Test customer support',text:'Customer support request',env,fetchImpl});
  assert.equal(ret.accepted,true);
- assert.equal(sent.to[0].email,'zebrablshopofficial@gmail.com');
- assert.equal(sent.sender.email,'zebrablshopofficial@gmail.com');
+ assert.equal(sent.to[0].email,'support-fixture@example.com');
+ assert.equal(sent.sender.email,'support-fixture@example.com');
  assert.equal(sent.replyTo.email,'customer@example.com');
 });
 
@@ -63,7 +63,8 @@ test('first-party support form has accessible required fields, API and mail-prov
   assert.ok(html.includes('name="'+field+'"'));
  }
  assert.match(html,/id="zebra-support-form"/);
- assert.match(html,/Compose directly in Gmail/);
+ assert.doesNotMatch(html,/Compose directly in Gmail|mailto:|@gmail\.com|mail\.google\.com/);
+ assert.match(html,/customer-support chat in the lower corner/);
  assert.match(script,/fetch\('\/api\/support\/request'/);
  assert.match(script,/response\.ok/);
  assert.match(server,/app\.post\('\/api\/support\/request',supportFormLimiter/);
@@ -81,7 +82,7 @@ test('every storefront email-contact button has a working form href without JS',
   const html=readFileSync(new URL(path,import.meta.url),'utf8');
   assert.ok(html.includes('href="/support/#contact"'),path+' must link to support form');
   const links=[...html.matchAll(/<a\b[^>]*>/gi)].map(x=>x[0]);
-  const bad=links.filter(tag=>/href="mailto:zebrablshopofficial@gmail\.com/i.test(tag)&&!/data-zebra-email-client/.test(tag));
+  const bad=links.filter(tag=>/href="mailto:/i.test(tag)&&!/data-zebra-email-client/.test(tag));
   assert.equal(bad.length,0,path+' must not rely on mailto except explicit fallback');
  }
 });
