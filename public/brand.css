@@ -341,6 +341,7 @@ html[data-theme="light"] .commerce-account .account-alert:not(.error) {
 html[data-theme="light"] body.scripts-page .product-card .product-copy,
 html[data-theme="light"] body.scripts-page .bundle-card,
 html[data-theme="light"] body.scripts-page .editorial-card,
+html[data-theme="light"] body.scripts-page .promo-notice,
 html[data-theme="light"] body.scripts-page .dialog,
 html[data-theme="light"] body.scripts-page .footer {
  --text:#f7f7f7;
