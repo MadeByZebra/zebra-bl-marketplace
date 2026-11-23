@@ -332,3 +332,110 @@ html[data-theme="light"] .commerce-page .commerce-inline-status:not(.is-error),
 html[data-theme="light"] .commerce-account .account-alert:not(.error) {
  color:#27603a!important;
 }
+
+/* Light-mode contrast for surfaces intentionally kept BLACK by True Black v8.
+   The global theme changes --text to near-black, but this design keeps the
+   script cards, bundle cards and product dialog at #080808. Reset local tokens
+   on those surfaces, NOT the whole card: the featured light mockup is a sibling
+   of .product-copy and must retain its own dark-on-light text. */
+html[data-theme="light"] body.scripts-page .product-card .product-copy,
+html[data-theme="light"] body.scripts-page .bundle-card,
+html[data-theme="light"] body.scripts-page .editorial-card,
+html[data-theme="light"] body.scripts-page .dialog,
+html[data-theme="light"] body.scripts-page .footer {
+ --text:#f7f7f7;
+ --muted:#c2c2c2;
+ --faint:#a9a9a9;
+ --line:#494949;
+ --line2:#666666;
+ --panel:#141414;
+ --panel2:#202020;
+ --bg:#0b0b0b;
+ --bg2:#171717;
+ --hover:#303030;
+ --button:#f5f5f5;
+ --button-text:#101010;
+ color:#f7f7f7;
+ color-scheme:dark;
+}
+/* Preserve white Zebra product tags/actions against their dark cards. */
+html[data-theme="light"] body.scripts-page .product-card .product-badge {
+ background:#f2f2ef!important;
+ color:#151515!important;
+ border-color:#d1d1d1!important;
+}
+html[data-theme="light"] body.scripts-page .product-card .product-actions :is(.outline-button,.buy-button),
+html[data-theme="light"] body.scripts-page .bundle-card .bundle-action {
+ background:#f2f2ef!important;
+ color:#101010!important;
+ border-color:#d1d1d1!important;
+}
+html[data-theme="light"] body.scripts-page .product-card .product-actions :is(.outline-button,.buy-button):hover,
+html[data-theme="light"] body.scripts-page .bundle-card .bundle-action:hover {
+ background:#ddddda!important;
+ color:#101010!important;
+ border-color:#ffffff!important;
+}
+html[data-theme="light"] body.scripts-page .product-card .product-actions :is(.outline-button,.buy-button):focus-visible,
+html[data-theme="light"] body.scripts-page .bundle-card .bundle-action:focus-visible {
+ outline:2px solid #ffffff!important;
+ outline-offset:3px;
+}
+/* Keep the separate pale Control Center preview readable, rather than
+   inheriting the deliberately dark copy column's foreground. */
+html[data-theme="light"] body.scripts-page .product-card .featured-art {
+ --text:#181818;
+ --muted:#505050;
+ --faint:#666666;
+ --line:#d4d4d0;
+ --line2:#b4b4ae;
+ color:#181818;
+ color-scheme:light;
+}
+/* The product-detail modal is also hardcoded black. Its own foreground,
+   subdued descriptions, form inputs, promotional labels and feature rows
+   must remain legible after the page behind it switches to light mode. */
+html[data-theme="light"] body.scripts-page .product-dialog .dialog-product-title,
+html[data-theme="light"] body.scripts-page .product-dialog .dialog-buy strong,
+html[data-theme="light"] body.scripts-page .product-dialog .feature-row {
+ color:#f7f7f7!important;
+}
+html[data-theme="light"] body.scripts-page .product-dialog :is(.dialog-product-desc,.dialog-detail-grid h4,.discount-label,.discount-feedback,.dialog-product-top span,.dialog-buy label,.micro-label) {
+ color:#c2c2c2!important;
+}
+html[data-theme="light"] body.scripts-page .product-dialog :is(input[type="text"],input[type="email"]) {
+ background:#1b1b1b!important;
+ color:#f7f7f7!important;
+ border:1px solid #777777!important;
+}
+html[data-theme="light"] body.scripts-page .product-dialog input::placeholder {
+ color:#b9b9b9!important;
+ opacity:1;
+}
+html[data-theme="light"] body.scripts-page .product-dialog .detail-video {
+ background:#171717!important;
+ border-color:#555555!important;
+ color:#f7f7f7!important;
+}
+html[data-theme="light"] body.scripts-page .product-dialog .detail-video span {
+ color:#c2c2c2!important;
+}
+html[data-theme="light"] body.scripts-page .product-dialog>.dialog-x {
+ background:#f2f2ef!important;
+ color:#101010!important;
+ border-color:#f2f2ef!important;
+}
+html[data-theme="light"] body.scripts-page .product-dialog>.dialog-x:hover {
+ background:#d6d6d3!important;
+ border-color:#ffffff!important;
+}
+/* A light-mode dialog's secondary actions still need contrast with the
+   hardcoded black backdrop, while preserving its actual checkout behavior. */
+html[data-theme="light"] body.scripts-page .dialog .outline-button {
+ background:#202020!important;
+ color:#f7f7f7!important;
+ border-color:#767676!important;
+}
+html[data-theme="light"] body.scripts-page .dialog .outline-button:hover {
+ background:#303030!important;
+}
