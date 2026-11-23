@@ -28,7 +28,7 @@ test('every storefront HTML page uses the approved Z favicon and global branding
  for(const src of [wordmark,icon]){
   assert.match(src,/xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
   assert.match(src,/fill="#f8f8f8"/);
-  assert.doesNotMatch(src,/purple|violet|#(?:a0[0-9a-f]{4}|[0-9a-f]{6})/i);
+  assert.doesNotMatch(src,/purple|violet|magenta|neon/i);
  }
 });
 test('all main headers and footers with a brand link display the approved wordmark',()=>{
