@@ -292,7 +292,11 @@ async function sendPurchaseConfirmation(sessionId){
   await sendShopEmail({
     to:order.email,subject:testMode()?'[STRIPE SANDBOX] Zebra\'s Shop test order':'Your Zebra\'s Shop purchase is ready',
     text:receiptEmail({name:byId[order.sku]?.title,totalCents:order.amount,
-      orderId:sessionId,storeUrl:SITE.origin,receiptUrl:stripeReceipt,testMode:testMode()}),
+      orderId:sessionId,storeUrl:SITE.origin,receiptUrl:stripeReceipt,
+      supportEmail:process.env.SUPPORT_EMAIL,testMode:testMode()}),
+    // Customer-facing replies go to the official shop even when the verified
+    // mail transport uses a separate technical sender.
+    replyTo:process.env.SUPPORT_EMAIL,
     idempotencyKey:'zebra-shop-order-'+sessionId
   });
  }catch(e){
