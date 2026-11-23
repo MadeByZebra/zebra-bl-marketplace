@@ -20,7 +20,9 @@ test('checkout carries document theme to Stripe Session without changing ownersh
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(client,/document\.documentElement\.dataset\.theme==='light'\?'light':'dark'/);
  assert.match(client,/body:JSON\.stringify\(\{sku,accepted_terms:true,discount_code:quoteCode,theme:checkoutTheme\}\)/);
- assert.match(server,/branding_settings:checkoutBrandingForTheme\(req\.body\?\.theme\)/);
+ assert.match(server,/branding_settings:checkoutBrandingForTheme\(checkoutTheme\)/);
+ assert.match(server,/checkout_theme:checkoutTheme/);
+ assert.match(server,/const checkoutTheme=req\.body\?\.theme==='light'\?'light':'dark'/);
  assert.match(server,/stripe\.checkout\.sessions\.create\(sessionData,\{apiVersion:CHECKOUT_BRANDING_API_VERSION\}\)/);
  assert.match(server,/if\(!checkoutReady\(\)\)/);
  assert.match(server,/if\(req\.body\?\.accepted_terms!==true\)/);
