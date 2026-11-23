@@ -19,6 +19,7 @@ import {verifyAndGrantStripeOrder,revokeForStripeChargeEvent} from './stripe-ful
 import {shouldRetryUnrecordedCheckout,expireIncompleteCheckout} from './checkout-consistency.js';
 import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.js';
 import {verifiedLiveProduct,liveReleaseReadiness} from './live-sales-release-gates.js';
+import {liveBuyerAllowed} from './live-checkout-buyers.js';
 import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.js';
 import {stripeKeyMode,stripeKeyType} from './stripe-key-mode.js';
 import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
@@ -63,6 +64,7 @@ let liveMerchant={ready:false,issues:['not_verified']};
 let liveMerchantLastChecked=0;
 let liveMerchantRequest=null;
 const configuredForLive=()=>stripeKeyMode(process.env.STRIPE_SECRET_KEY)==='live';
+const liveBuyerPermitted=user=>!configuredForLive()||liveBuyerAllowed(user?.email,process.env);
 // Stripe can suspend a merchant after activation. Cache short merchant checks
 // instead of trusting the existence of a live secret key or a startup result.
 async function refreshLiveMerchant(force=false){
@@ -386,9 +388,17 @@ app.post('/api/support/request',supportFormLimiter,async(req,res)=>{
 app.get('/api/store',async(req,res)=>{
  try{
   await refreshLiveMerchant();
+  const user=await fetchUser(req);
   const state=publicState();
+  // Seller-only live checkout: everyone else sees ON HOLD and cannot pay.
+  if(configuredForLive()&&!liveBuyerPermitted(user)){
+   state.checkout_ready=false;
+   state.checkout_message='Purchasing is restricted during the seller-only live delivery test. No payment was taken.';
+   state.catalog.products=state.catalog.products.map(p=>({...p,unavailable:true}));
+   state.catalog.bundles=state.catalog.bundles.map(p=>({...p,unavailable:true}));
+   state.catalog.extras=state.catalog.extras.map(p=>({...p,unavailable:true}));
+  }
   if(testMode()){
-   const user=await fetchUser(req);
    const approved=isSandboxTester(user?.email);
    if(!approved&&state.checkout_ready){
     state.checkout_ready=false;
@@ -464,6 +474,8 @@ app.post('/api/logout',requireUser,async(req,res)=>{
  try{const token=parseCookie(req.headers.cookie,'bl_session');await query('DELETE FROM sessions WHERE token_hash=$1',[sha(token)]);clearCookie(res);res.json({ok:true});}catch(e){safeError(res,e);}
 });
 app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
+ // Never trust the client-side ON HOLD display as the only access control.
+ if(configuredForLive()&&!liveBuyerPermitted(req.user))return res.status(403).json({error:'Live checkout is currently restricted to the seller test account. No payment was taken.'});
  await refreshLiveMerchant();
  if(!checkoutReady())return res.status(503).json({error:checkoutStatus()||'Checkout is unavailable. No payment was taken.'});
  if(testMode()&&!mayCheckoutSandbox({email:req.user.email,sku:String(req.body?.sku||'')}))

@@ -81,6 +81,10 @@
    const result=await api('/api/auth/verify-code',{method:'POST',
     body:JSON.stringify({email:state.email,code:$('checkoutOtp').value.trim()})});
    state.user=result.user;state.email='';$('checkoutOtp').value='';
+   // The public catalog was intentionally ON HOLD before sign-in. Refresh it
+   // with the new session so an approved seller can actually reach Stripe.
+   await refresh();
+   if($('promoCode').value.trim())await updateQuote($('promoCode').value.trim());
    status('authStatus','Email verified. Your purchase will be attached to this account.');
    syncButtons();
   }catch(err){status('authStatus',err.message,true);}
