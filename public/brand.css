@@ -255,3 +255,80 @@
  border-left:2px solid #777;padding:7px 0 7px 11px;
  margin:0!important;background:transparent;
 }
+
+/* Light-mode contrast audit (2026-11-23).
+ * Dark UI mockups contain hard-coded light-on-dark labels. Those same labels
+ * were near-invisible after their parent panels switched to light surfaces.
+ * Scope changes to light mode only; don't recolor true-dark license/activation
+ * cards or the purposely black executor directory. */
+html[data-theme="light"] .zebra-v8 .visual-content-top h3,
+html[data-theme="light"] .zebra-v8 .window-content h3,
+html[data-theme="light"] .zebra-v8 .studio-preview-panel h3,
+html[data-theme="light"] .zebra-v8 .preview-row-copy strong,
+html[data-theme="light"] .zebra-v8 .studio-surface-head strong,
+html[data-theme="light"] .zebra-v8 .studio-line strong,
+html[data-theme="light"] .zebra-v8 .studio-event strong,
+html[data-theme="light"] .zebra-v8 .studio-toolbar .crumb b,
+html[data-theme="light"] .commerce-account .account-side-list b {
+ color:#171717!important;
+}
+html[data-theme="light"] .zebra-v8 .visual-kicker,
+html[data-theme="light"] .zebra-v8 .visual-content-top p,
+html[data-theme="light"] .zebra-v8 .window-content>p,
+html[data-theme="light"] .zebra-v8 .preview-row-copy span,
+html[data-theme="light"] .zebra-v8 .visual-stats span,
+html[data-theme="light"] .zebra-v8 .visual-stats small,
+html[data-theme="light"] .zebra-v8 .metric-row small,
+html[data-theme="light"] .zebra-v8 .studio-toolbar .crumb,
+html[data-theme="light"] .zebra-v8 .studio-toolbar .status,
+html[data-theme="light"] .zebra-v8 .studio-surface-head span,
+html[data-theme="light"] .zebra-v8 .studio-line small,
+html[data-theme="light"] .zebra-v8 .studio-event small,
+html[data-theme="light"] .zebra-v8 .studio-line>a,
+html[data-theme="light"] .zebra-v8 .studio-line>span:last-child,
+html[data-theme="light"] .zebra-v8 .studio-link,
+html[data-theme="light"] .zebra-v8 .studio-remark,
+html[data-theme="light"] .zebra-v8 .visual-bottom,
+html[data-theme="light"] .zebra-v8 .window-side .side-heading {
+ color:#525252!important;
+}
+html[data-theme="light"] .zebra-v8 .visual-sidebar-item:not(.active),
+html[data-theme="light"] .zebra-v8 .window-side .side-option:not(.selected),
+html[data-theme="light"] .zebra-v8 .window-side button.side-option:not(.selected) {
+ color:#484848!important;
+}
+html[data-theme="light"] .zebra-v8 .visual-sidebar button.visual-sidebar-item:not(.active):hover,
+html[data-theme="light"] .zebra-v8 .visual-sidebar a.visual-sidebar-item:hover,
+html[data-theme="light"] .zebra-v8 .window-side button.side-option:not(.selected):hover {
+ background:#dadad6!important;color:#111!important;border-color:#bababa!important;
+}
+html[data-theme="light"] .zebra-v8 .preview-tabs button {
+ color:#505050!important;
+}
+html[data-theme="light"] .zebra-v8 .preview-tabs button:hover,
+html[data-theme="light"] .zebra-v8 .preview-tabs button.is-active {
+ color:#111!important;background:#e0e0dc!important;
+ border-bottom-color:#555!important;
+}
+html[data-theme="light"] .zebra-v8 .preview-row:hover {
+ background:#e5e5e1!important;
+}
+html[data-theme="light"] .zebra-v8 .studio-line:hover {
+ background:#eaeae7!important;
+}
+html[data-theme="light"] .zebra-v8 .studio-statusbar {
+ color:#505050!important;
+}
+/* Keep product identity cards and the installation/approved-license panels
+ * intentionally dark, even while the surrounding account page is light. */
+html[data-theme="light"] .commerce-page .commerce-selected small,
+html[data-theme="light"] .commerce-page .commerce-included li::marker {
+ color:#505050!important;
+}
+html[data-theme="light"] .commerce-page .commerce-assurance span:first-letter {
+ color:#424242!important;
+}
+html[data-theme="light"] .commerce-page .commerce-inline-status:not(.is-error),
+html[data-theme="light"] .commerce-account .account-alert:not(.error) {
+ color:#27603a!important;
+}
