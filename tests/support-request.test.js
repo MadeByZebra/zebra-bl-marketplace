@@ -63,7 +63,8 @@ test('first-party support form has accessible required fields, API and mail-prov
   assert.ok(html.includes('name="'+field+'"'));
  }
  assert.match(html,/id="zebra-support-form"/);
- assert.match(html,/Compose directly in Gmail/);
+ assert.doesNotMatch(html,/Compose directly in Gmail|mailto:|@gmail\.com|mail\.google\.com/);
+ assert.match(html,/customer-support chat in the lower corner/);
  assert.match(script,/fetch\('\/api\/support\/request'/);
  assert.match(script,/response\.ok/);
  assert.match(server,/app\.post\('\/api\/support\/request',supportFormLimiter/);
