@@ -43,7 +43,7 @@ test('checkout cannot invent products, grant payment or trust browser pricing',(
  assert.match(checkoutJs,/api\('\/api\/checkout'/);
  assert.match(checkoutJs,/url\.hostname!=='checkout\.stripe\.com'/);
  assert.match(server,/itemReadyForSale\(item\)/);
- assert.match(server,/stripe\.checkout\.sessions\.create\(sessionData\)/);
+ assert.match(server,/stripe\.checkout\.sessions\.create\(sessionData,\{apiVersion:CHECKOUT_BRANDING_API_VERSION\}\)/);
  assert.match(server,/ALLOW_LIVE_SALES/);
  assert.doesNotMatch(checkoutJs,/payment_status\s*[:=]\s*['"]paid/);
  assert.doesNotMatch(checkout,/\b(?:sk|rk)_live_[A-Za-z0-9]/);

@@ -100,8 +100,9 @@
   state.busy=true;syncButtons();set('completeCheckout','Opening secure Stripe checkout…');
   try{
    const quoteCode=$('promoCode').value.trim();
+   const checkoutTheme=document.documentElement.dataset.theme==='light'?'light':'dark';
    const data=await api('/api/checkout',{method:'POST',
-    body:JSON.stringify({sku,accepted_terms:true,discount_code:quoteCode})});
+    body:JSON.stringify({sku,accepted_terms:true,discount_code:quoteCode,theme:checkoutTheme})});
    const url=new URL(data.url);
    if(url.protocol!=='https:'||url.hostname!=='checkout.stripe.com')throw new Error('Unexpected payment provider address. No card information was entered.');
    window.location.assign(url.toString());
