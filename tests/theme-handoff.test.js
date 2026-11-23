@@ -23,6 +23,7 @@ test('page asset versions force browsers to refresh the theme handoff and checko
  const checkout=read('public/checkout/index.html');
  assert.match(checkout,/\/checkout\/checkout\.js\?v=20261123-theme-checkout/);
  assert.match(read('public/scripts/index.html'),/\/app\.js\?v=20261123-theme-bridge/);
+ assert.match(read('public/checkout/checkout.js'),/document\.documentElement\.dataset\.theme==='light'\?'light':'dark'/);
 });
 
 test('new Stripe Sessions retain a diagnostic copy of the whitelisted appearance',()=>{
