@@ -31,3 +31,9 @@ test('server applies buyer allowlist to both public catalog and the payment endp
  assert.match(s,/!liveBuyerPermitted\(req\.user\)/);
  assert.match(s,/state\.catalog\.products=state\.catalog\.products\.map\(p=>\(\{\.\.\.p,unavailable:true\}\)\)/);
 });
+
+test('after OTP sign-in, checkout re-fetches seller-specific availability',()=>{
+ const source=readFileSync(new URL('../public/checkout/checkout.js',import.meta.url),'utf8');
+ assert.match(source,/await refresh\(\);/);
+ assert.match(source,/if\(\$\('promoCode'\)\.value\.trim\(\)\)await updateQuote/);
+});
