@@ -111,3 +111,13 @@
 @media(max-width:550px){
   .help-nav .help-brand .brand-logo{width:118px}
 }
+
+/* Buyer-approved installation enrollment on the private library page. */
+.commerce-device-pairing{margin:14px 0;padding:16px 17px;border:1px solid #333;border-radius:12px;background:#0b0b0b}
+.commerce-device-pairing .commerce-eyebrow{color:#f7f7f7;margin-bottom:9px}
+.commerce-device-pairing .commerce-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.commerce-device-pairing .commerce-form label{width:100%;margin:4px 0 0}
+.commerce-device-pairing .commerce-form input{flex:1 1 160px;max-width:300px;letter-spacing:.16em;text-transform:uppercase;font-family:ui-monospace,monospace}
+.commerce-device-pairing .commerce-form button{flex:0 1 auto}
+.commerce-device-pairing .account-status{margin-top:10px;overflow-wrap:anywhere}
+@media(max-width:550px){.commerce-device-pairing .commerce-form button{width:100%}}

@@ -18,6 +18,13 @@ export const marketplaceSchema=[
  // Created on existing Neon databases at startup. Excluded from the original one-time
  // Render->Neon migration manifest: it did not exist on the legacy source.
  `CREATE TABLE IF NOT EXISTS license_network_bindings (license_id TEXT PRIMARY KEY REFERENCES licenses(id), network_hash TEXT NOT NULL, first_seen_at BIGINT NOT NULL, last_seen_at BIGINT NOT NULL, blocked_attempts INTEGER NOT NULL DEFAULT 0)`,
+ // Installation approval and runtime tickets intentionally excluded from one-time
+ // legacy database transfer manifest; they are created on both DB engines at startup.
+ `CREATE TABLE IF NOT EXISTS license_device_pairings (license_id TEXT NOT NULL REFERENCES licenses(id), device_hash TEXT NOT NULL, code_hash TEXT NOT NULL, requested_at BIGINT NOT NULL, expires_at BIGINT NOT NULL, PRIMARY KEY(license_id,device_hash))`,
+ `CREATE INDEX IF NOT EXISTS license_device_pairings_expiry ON license_device_pairings(expires_at)`,
+ `CREATE TABLE IF NOT EXISTS license_device_bindings (license_id TEXT PRIMARY KEY REFERENCES licenses(id), device_hash TEXT NOT NULL, approved_at BIGINT NOT NULL, last_used_at BIGINT NOT NULL, blocked_attempts INTEGER NOT NULL DEFAULT 0)`,
+ `CREATE TABLE IF NOT EXISTS license_execution_tickets (token_hash TEXT PRIMARY KEY, license_id TEXT NOT NULL REFERENCES licenses(id), sku TEXT NOT NULL, created_at BIGINT NOT NULL, expires_at BIGINT NOT NULL, consumed_at BIGINT)`,
+ `CREATE INDEX IF NOT EXISTS license_execution_tickets_expiry ON license_execution_tickets(expires_at)`,
  `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`,
  `CREATE TABLE IF NOT EXISTS free_promo_redemptions (user_id TEXT PRIMARY KEY REFERENCES users(id), sku TEXT NOT NULL, session_id TEXT UNIQUE NOT NULL, created_at BIGINT NOT NULL, redeemed_at BIGINT)`,
  `CREATE TABLE IF NOT EXISTS order_feedback (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), user_id TEXT NOT NULL REFERENCES users(id), rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5), comment TEXT NOT NULL DEFAULT '', created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL)`

@@ -25,6 +25,8 @@ import {stripeKeyMode,stripeKeyType} from './stripe-key-mode.js';
 import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
 import {rotateLicenseAtomically,LicenseRotationLimitError} from './license-rotation.js';
 import {hashedNetwork,authorizeNetwork} from './license-network-binding.js';
+import {validDeviceSecret,validPairingCode,requestDeviceApproval,approveInstallation} from './license-device-approval.js';
+import {issueExecutionTicket,redeemExecutionTicket,wrapLuaWithTicket} from './license-execution-ticket.js';
 import {reconcilePendingPurchases} from './purchase-reconciliation.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
@@ -112,7 +114,7 @@ const schema=marketplaceSchema;
 async function query(sql,values=[]){
  if(pool){const r=await pool.query(sql,values);return r.rows;}
  const stmt=sqlite.prepare(sql.replace(/\$\d+/g,'?'));
- return /^\s*(SELECT|WITH)\b/i.test(sql)?stmt.all(...values):(stmt.run(...values),[]);
+ return /^\s*(SELECT|WITH)\b/i.test(sql)||/\bRETURNING\b/i.test(sql)?stmt.all(...values):(stmt.run(...values),[]);
 }
 async function init(){for(const sql of schema)await query(sql);}
 async function bootstrapDatabase(){
@@ -163,6 +165,10 @@ app.use('/api',(req,res,next)=>{
 const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-7',legacyHeaders:false});
 const checkoutLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 const downloadLimiter=rateLimit({windowMs:60*60*1000,limit:35,standardHeaders:'draft-7',legacyHeaders:false});
+const deviceApproveLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:'draft-7',legacyHeaders:false});
+const runtimeTicketLimiter=rateLimit({windowMs:60*1000,limit:100,standardHeaders:'draft-7',legacyHeaders:false});
+const deviceApprovalActive=()=>process.env.ENFORCE_LICENSE_DEVICE_APPROVAL==='1';
+const runtimeTicketActive=()=>process.env.ENFORCE_LICENSE_EXECUTION_TICKETS==='1';
 const supportFormLimiter=rateLimit({windowMs:60*60*1000,limit:4,standardHeaders:'draft-7',legacyHeaders:false});
 const testMode=()=>stripeKeyMode(process.env.STRIPE_SECRET_KEY)==='test';
 const paymentReady=()=>!!(stripe&&stripeAuth==='authorized'&&!!stripeKeyMode(process.env.STRIPE_SECRET_KEY)&&configuredWebhookSecret(process.env.STRIPE_SECRET_KEY,process.env)&&process.env.DISABLE_CHECKOUT!=='1'&&process.env.STORE_MAINTENANCE!=='1'&&usingPostgres&&mailReady()&&(testMode()||emailValid(process.env.SUPPORT_EMAIL||''))&&(!LIVE||!!process.env.PUBLIC_URL));
@@ -640,7 +646,7 @@ app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
   const key='ZBL_'+randomBytes(28).toString('hex');
   await rotateLicenseAtomically({pool,sqlite,userId:req.user.id,sku,
    licenseId:randomUUID(),tokenHash:sha(key),at:now(),maxKeysPerWeek:3});
-  res.json({loadstring:buyerLoadstring(sku,key),note:'One active network per private license when protection is enabled. Your first launch claims that network. If you change networks, generate a new key in My Library; the old one stops working. You can receive up to three keys per seven days per product.'});
+  res.json({loadstring:buyerLoadstring(sku,key),note:'Your purchase allows Roblox main and alt accounts on one approved installation. Run the loader, then approve its 10-character code in My Library. A replacement key revokes previous keys. Maximum three keys per seven days.'});
  }catch(e){
   if(e instanceof LicenseRotationLimitError)return res.status(429).json({error:e.message});
   safeError(res,e);
@@ -652,22 +658,60 @@ app.get('/api/license-status/:sku',requireUser,async(req,res)=>{
  if(!products.some(p=>p.id===sku&&!p.unavailable))return res.sendStatus(404);
  try{
   if(!await entitlementIsPaid(req.user.id,sku))return res.sendStatus(403);
-  const rows=await query(`SELECT l.created_at,l.last_used_at,
+  const rows=await query(`SELECT l.id,l.created_at,l.last_used_at,
     b.first_seen_at,b.last_seen_at,b.blocked_attempts
     FROM licenses l LEFT JOIN license_network_bindings b ON b.license_id=l.id
     WHERE l.user_id=$1 AND l.sku=$2 AND l.revoked_at IS NULL`,[req.user.id,sku]);
   const recent=await query('SELECT COUNT(*) AS n FROM licenses WHERE user_id=$1 AND sku=$2 AND created_at>=$3',
     [req.user.id,sku,now()-7*24*60*60*1000]);
   const bound=rows[0];
+  const device=bound?.id?(await query('SELECT approved_at,last_used_at,blocked_attempts FROM license_device_bindings WHERE license_id=$1',[bound.id]))[0]:null;
   res.json({
    issued:!!bound,network_bound:!!bound?.first_seen_at,
    first_used_at:bound?.first_seen_at?Number(bound.first_seen_at):null,
    last_used_at:bound?.last_seen_at?Number(bound.last_seen_at):null,
    blocked_network_attempts:bound?Number(bound.blocked_attempts||0):0,
    keys_issued_last_7_days:Number(recent[0]?.n||0),max_keys_per_7_days:3,
-   protection_enabled:process.env.ENFORCE_LICENSE_NETWORK_BINDING==='1'
+   protection_enabled:process.env.ENFORCE_LICENSE_NETWORK_BINDING==='1'&&!deviceApprovalActive(),
+   device_approval_enabled:deviceApprovalActive(),
+   device_approved:!!device,
+   device_approved_at:device?Number(device.approved_at):null,
+   blocked_unapproved_installations:device?Number(device.blocked_attempts):0,
+   execution_ticket_protection_enabled:runtimeTicketActive()
   });
  }catch(err){safeError(res,err);}
+});
+// Approving a device requires the purchasing account's signed-in web session.
+// A copied Lua loadstring alone never approves a new device.
+app.post('/api/approve-device/:sku',deviceApproveLimiter,requireUser,async(req,res)=>{
+ const sku=String(req.params.sku||'');
+ const code=String(req.body?.code||'').trim().toUpperCase();
+ if(!products.some(p=>p.id===sku&&!p.unavailable))return res.sendStatus(404);
+ if(!validPairingCode(code))return res.status(400).json({error:'Enter the 10-character activation code displayed when running your loadstring.'});
+ try{
+  if(!await entitlementIsPaid(req.user.id,sku))return res.status(403).json({error:'Paid ownership verification required.'});
+  const active=(await query('SELECT id FROM licenses WHERE user_id=$1 AND sku=$2 AND revoked_at IS NULL',[req.user.id,sku]))[0];
+  if(!active)return res.status(409).json({error:'No active license. Generate your newest personal loadstring in My Library.'});
+  const result=await approveInstallation({query,licenseId:active.id,code,at:now()});
+  if(result.status==='approved')return res.json({approved:true,message:'Installation approved. Run the same personal loadstring again. Any Roblox account on that installation can use it.'});
+  if(result.status==='already_approved_other_device')
+   return res.status(409).json({error:'This license already has another approved installation. Rotate its key if you are changing devices.'});
+  return res.status(400).json({error:'Invalid or expired activation code. Run your newest personal loadstring to get a fresh code.'});
+ }catch(e){safeError(res,e);}
+});
+// A ticket is only a one-use handshake; it cannot deliver any script bytes.
+app.get('/api/runtime/:sku',runtimeTicketLimiter,async(req,res)=>{
+ const sku=String(req.params.sku||'');
+ const token=String(req.query.token||'');
+ res.set({'Referrer-Policy':'no-referrer','Cache-Control':'private, no-store, max-age=0','X-Robots-Tag':'noindex, nofollow'});
+ if(!runtimeTicketActive())return res.sendStatus(404);
+ try{
+  const licenseId=await redeemExecutionTicket({query,token,sku,at:now()});
+  if(!licenseId)return res.sendStatus(403);
+  const license=(await query('SELECT user_id FROM licenses WHERE id=$1 AND sku=$2 AND revoked_at IS NULL',[licenseId,sku]))[0];
+  if(!license||!await entitlementIsPaid(license.user_id,sku))return res.sendStatus(403);
+  return res.status(200).type('text/plain').send('ZBL_OK');
+ }catch(e){safeError(res,e);}
 });
 // Runtime licenses do not use browser cookies. Every delivery verifies the paid account.
 app.get('/api/loader/:sku',loaderLimiter,licenseLoaderLimiter,async(req,res)=>{
@@ -676,9 +720,25 @@ app.get('/api/loader/:sku',loaderLimiter,licenseLoaderLimiter,async(req,res)=>{
  try{
   const found=(await query('SELECT * FROM licenses WHERE token_hash=$1 AND sku=$2 AND revoked_at IS NULL',[sha(key),sku]))[0];
   if(!found||!await entitlementIsPaid(found.user_id,sku))return res.sendStatus(403);
-  // Privacy: server hashes the trusted request network and never stores a raw IP.
-  // This is a best-effort network lease, not a tamperproof hardware ID.
-  if(process.env.ENFORCE_LICENSE_NETWORK_BINDING==='1'){
+  // When enabled, buyer-approved installation replaces the brittle IP-only
+  // guard. An owner can switch Wi-Fi networks without losing paid access.
+  if(deviceApprovalActive()){
+   const deviceSecret=String(req.query.device||'');
+   if(!validDeviceSecret(deviceSecret))return res.status(403).type('text/plain').send('Missing installation identity. Use the current GitHub bootstrap and latest purchased loadstring.');
+   const verdict=await requestDeviceApproval({query,licenseId:found.id,deviceSecret,at:now()});
+   if(verdict.status!=='approved'){
+    const guidance=verdict.status==='pending'
+     ?'Zebra installation activation required. Sign in to My Library on the website, enter code '+verdict.code+', approve, then execute this same loadstring again.'
+     :verdict.status==='different_device'
+     ?'Zebra license is active on a different approved installation. To replace it, generate a new key in My Library.'
+     :verdict.status==='too_many_requests'
+     ?'Too many unapproved installation requests. Generate a new personal key or contact Support.'
+     :'Zebra cannot verify this installation. Open My Library.';
+    // Lua deliberately stops BEFORE any paid source is delivered. HTTP 200
+    // ensures executors display the meaningful error rather than masking 403.
+    return res.status(200).type('text/plain').send('error('+JSON.stringify(guidance)+',0)');
+   }
+  }else if(process.env.ENFORCE_LICENSE_NETWORK_BINDING==='1'){
    const networkHash=hashedNetwork(req.ip,found.id);
    if(!networkHash)return res.status(403).type('text/plain').send('Could not verify the active installation network.');
    const allowed=await authorizeNetwork({pool,sqlite,licenseId:found.id,networkHash,at:now()});
@@ -687,9 +747,17 @@ app.get('/api/loader/:sku',loaderLimiter,licenseLoaderLimiter,async(req,res)=>{
   const item=products.find(p=>p.id===sku);
   if(!hasSealed(SCRIPT_DIR,item.file))return res.sendStatus(503);
   const payload=readVerifiedScript(SCRIPT_DIR,item.file,PAYLOAD_MANIFEST);
+  // A captured *unchanged* delivery expires after one execution. This raises
+  // the cost of casual raw-payload reposts but can be removed by a skilled
+  // person who controls the client. Never claim unbypassable DRM.
+  const body=runtimeTicketActive()
+   ?wrapLuaWithTicket(payload,
+     SITE.origin+'/api/runtime/'+encodeURIComponent(sku)+'?token='+await issueExecutionTicket({query,licenseId:found.id,sku,at:now()}),
+     found.id,sku)
+   :payload;
   await query('UPDATE licenses SET last_used_at=$1 WHERE id=$2',[now(),found.id]);
   res.set({'Referrer-Policy':'no-referrer','Content-Type':'text/plain; charset=utf-8','Cache-Control':'private, no-store, max-age=0','X-Robots-Tag':'noindex, nofollow','Content-Disposition':'inline'});
-  res.send(payload);
+  res.send(body);
  }catch(e){safeError(res,e);}
 });
 // Paid installer is never publicly exposed by the web server.
