@@ -57,7 +57,7 @@ export async function approveInstallation({query,licenseId,code,at}){
  // under concurrent approvals. No owner can silently approve a second device.
  await query(`INSERT INTO license_device_bindings
   (license_id,device_hash,approved_at,last_used_at,blocked_attempts)
-  VALUES($1,$2,$3,$3,0) ON CONFLICT(license_id) DO NOTHING`,[licenseId,hash,at]);
+  VALUES($1,$2,$3,$4,0) ON CONFLICT(license_id) DO NOTHING`,[licenseId,hash,at,at]);
  const bound=(await query('SELECT device_hash FROM license_device_bindings WHERE license_id=$1',[licenseId]))[0];
  if(bound?.device_hash!==hash)return {status:'already_approved_other_device'};
  await query('DELETE FROM license_device_pairings WHERE license_id=$1',[licenseId]);
