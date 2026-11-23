@@ -239,3 +239,19 @@
  .commerce-account .library-item .commerce-library-actions{justify-content:flex-start}
  .commerce-account .library-item .commerce-library-actions .btn{flex:1 1 145px;max-width:none}
 }
+
+/* Product-specific buyer setup notes across all six paid scripts. */
+.commerce-account .library-item > .commerce-product-setup-tip{
+ grid-column:1/-1!important;width:100%;min-width:0;
+ margin:7px 0 4px!important;
+ padding:11px 13px;border:1px solid #353535;
+ background:linear-gradient(115deg,#121212,#090909);
+ border-radius:9px;color:#bdbdbd;
+ font:500 12px/1.65 Geist,system-ui,sans-serif;
+ overflow-wrap:anywhere;
+}
+.commerce-account .commerce-loader-card .commerce-product-setup-tip{
+ color:#c6c6c6;font:500 12px/1.65 Geist,system-ui,sans-serif;
+ border-left:2px solid #777;padding:7px 0 7px 11px;
+ margin:0!important;background:transparent;
+}
