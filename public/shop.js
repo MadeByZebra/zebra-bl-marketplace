@@ -1,6 +1,7 @@
 (()=>{'use strict';const r=document.documentElement,button=document.getElementById('themeToggle');
 const sync=()=>{if(button)button.textContent=r.dataset.theme==='light'?'◑':'◐';};
-try{const saved=(localStorage.getItem('zebra-shop-theme')||localStorage.getItem('bl-theme'));if(saved==='light'||saved==='dark')r.dataset.theme=saved;}catch{}
+const requestedTheme=new URLSearchParams(location.search).get('theme');
+try{const saved=(localStorage.getItem('zebra-shop-theme')||localStorage.getItem('bl-theme'));const selected=(requestedTheme==='light'||requestedTheme==='dark')?requestedTheme:saved;if(selected==='light'||selected==='dark')r.dataset.theme=selected;if(requestedTheme==='light'||requestedTheme==='dark'){localStorage.setItem('zebra-shop-theme',requestedTheme);localStorage.setItem('bl-theme',requestedTheme);}}catch{if(requestedTheme==='light'||requestedTheme==='dark')r.dataset.theme=requestedTheme;}
 sync();button?.addEventListener('click',()=>{r.dataset.theme=r.dataset.theme==='light'?'dark':'light';try{localStorage.setItem('zebra-shop-theme',r.dataset.theme);localStorage.setItem('bl-theme',r.dataset.theme)}catch{}sync()});
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 if('IntersectionObserver' in window&&!reduced){const observer=new IntersectionObserver(entries=>entries.forEach(({target,isIntersecting})=>{if(isIntersecting){target.classList.add('in');observer.unobserve(target)}}),{threshold:.1,rootMargin:'0px 0px -15px 0px'});document.querySelectorAll('.reveal').forEach(x=>observer.observe(x));}else document.querySelectorAll('.reveal').forEach(x=>x.classList.add('in'));

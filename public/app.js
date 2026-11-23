@@ -197,7 +197,7 @@ function wire(){
  });
  $$('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d)d.close();}));
 }
-async function startup(){try{const saved=localStorage.getItem('zebra-shop-theme')||localStorage.getItem('bl-theme');if(saved==='light'||saved==='dark'){document.body.dataset.theme=saved;document.documentElement.dataset.theme=saved;}}catch{}
+async function startup(){const requestedTheme=new URLSearchParams(location.search).get('theme');try{const saved=localStorage.getItem('zebra-shop-theme')||localStorage.getItem('bl-theme');const selected=(requestedTheme==='light'||requestedTheme==='dark')?requestedTheme:saved;if(selected==='light'||selected==='dark'){document.body.dataset.theme=selected;document.documentElement.dataset.theme=selected;}if(requestedTheme==='light'||requestedTheme==='dark'){localStorage.setItem('zebra-shop-theme',requestedTheme);localStorage.setItem('bl-theme',requestedTheme);}}catch{if(requestedTheme==='light'||requestedTheme==='dark'){document.body.dataset.theme=requestedTheme;document.documentElement.dataset.theme=requestedTheme;}}
  $('#year').textContent=String(new Date().getFullYear());wire();setupDesignInteractions();
  try{const [store,me]=await Promise.all([api('/api/store'),api('/api/me')]);state={...state,...store,user:me.user};renderProducts();renderBundles();renderAccount();
   $('#paymentStatus').textContent=store.checkout_ready?(store.mode==='test'?'STRIPE TEST CHECKOUT READY':'STRIPE CHECKOUT READY'):'CHECKOUT SETUP PENDING';
