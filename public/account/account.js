@@ -94,7 +94,7 @@
         result.hidden=true;
         const label=element('strong','PERSONAL LOADSTRING — KEEP PRIVATE');
         label.className='commerce-eyebrow';
-        const explanation=element('p','Your first run binds this key to one network. A replacement key resets the installation and revokes the old key. Limit: three keys per seven days per product. Do not share your license.','commerce-muted');
+        const explanation=element('p','A personal loadstring works on your main and alt Roblox accounts on the same approved installation. If activation is required, run the newest loadstring, then approve its 10-character code below. Replacing a key revokes older versions. Limit: three keys per seven days.','commerce-muted');
         const area=element('textarea');
         area.readOnly=true;area.spellcheck=false;
         area.setAttribute('aria-label',product.title+' private loadstring');
@@ -143,6 +143,37 @@
             feedback.textContent='Saved to your computer. Keep this file private.';
           }finally{setTimeout(()=>URL.revokeObjectURL(url),1000);}
         });
+        // Buyer approval happens in this signed-in browser, never in Roblox.
+        const pairing=element('section',undefined,'commerce-loader-card commerce-device-pairing');
+        const heading=element('strong','APPROVE THIS INSTALLATION');
+        heading.className='commerce-eyebrow';
+        const pairHelp=element('p','Run your newest personal loadstring in-game. If it asks for an activation code, enter that 10-character code here. Only you can approve it through your paid account. You can use multiple Roblox alts on the approved installation.','commerce-muted');
+        const form=element('form',undefined,'commerce-form');
+        const codeLabel=element('label','Activation code (10 characters)');
+        const codeInput=element('input');
+        const codeId='zebraPair_'+sku;
+        codeLabel.htmlFor=codeId;codeInput.id=codeId;
+        codeInput.type='text';codeInput.maxLength=10;codeInput.minLength=10;codeInput.required=true;
+        codeInput.placeholder='A1B2C3D4E5';codeInput.autocomplete='off';
+        codeInput.spellcheck=false;codeInput.setAttribute('autocapitalize','characters');
+        const pairButton=element('button','Approve installation ↗','btn primary');
+        pairButton.type='submit';
+        const pairFeedback=element('p','','account-status');pairFeedback.setAttribute('role','status');
+        form.append(codeLabel,codeInput,pairButton);
+        form.addEventListener('submit',async event=>{
+          event.preventDefault();pairButton.disabled=true;
+          pairFeedback.textContent='Verifying your paid account and installation code…';
+          try{
+            const code=codeInput.value.trim().toUpperCase();
+            if(!/^[A-F0-9]{10}$/.test(code))throw new Error('Enter the 10-character code shown in your game console.');
+            const result=await api('/api/approve-device/'+encodeURIComponent(sku),
+              {method:'POST',body:JSON.stringify({code})});
+            pairFeedback.textContent=result.message||'Installation approved. Run the same personal loadstring again.';
+            codeInput.value='';
+          }catch(error){pairFeedback.textContent='Approval failed: '+error.message;}
+          finally{pairButton.disabled=false;}
+        });
+        pairing.append(heading,pairHelp,form,pairFeedback);
         // Buyer-facing status only. Server never exposes raw IPs or fingerprints.
         const checkStatus=element('button','Check license security ↗','btn');
         checkStatus.type='button';
@@ -154,16 +185,20 @@
             const details=await api('/api/license-status/'+encodeURIComponent(sku));
             const available=Math.max(0,details.max_keys_per_7_days-details.keys_issued_last_7_days);
             securityNote.textContent=(details.issued
-              ?details.network_bound?'Active: one network locked to this license.':'Issued: first use will bind your network.'
+              ?details.device_approval_enabled
+                ?details.device_approved?'Active: installation approved. Roblox alt accounts on this installation can use your product.':'Device activation pending. Run newest loader and approve its code.'
+                :details.network_bound?'Active: one network locked to this license.':'Issued: first use will bind your network.'
               :'No personal license issued yet.')+
               ' Replacement keys available in the next seven-day window: '+available+'.'+
               (details.blocked_network_attempts>0?' Blocked other-network requests: '+details.blocked_network_attempts+'.':'')+
-              (!details.protection_enabled?' Network protection is not yet enabled.':'');
+              (details.device_approval_enabled
+                ?(details.blocked_unapproved_installations>0?' Blocked requests from other installations: '+details.blocked_unapproved_installations+'.':'')
+                :!details.protection_enabled?' Network protection is not yet enabled.':'');
           }catch(err){securityNote.textContent='Could not retrieve license status: '+err.message;}
           finally{checkStatus.disabled=false;}
         });
         controls.append(generate,checkStatus);
-        row.append(result,securityNote);
+        row.append(result,pairing,securityNote);
       }
       row.prepend(info);
       const output=row.querySelector('.commerce-loader-card');
