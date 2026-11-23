@@ -5,7 +5,7 @@ test('new personal commands fetch the latest device-aware public bootstrap witho
  const key='ZBL_'+'a'.repeat(56);
  for(const sku of ['fps-optimizer','control-center','str-grinder','end-grinder','dex-desktop','dex-mobile']){
   const url=githubLoaderUrl(sku);
-  assert.match(url,/\.lua\?v=device-approval-f9-20261123-v2$/);
+  assert.match(url,/\.lua\?v=device-approval-panel-20261123-v3$/);
   assert.ok(url.startsWith('https://raw.githubusercontent.com/MadeByZebra/zebra-bl-marketplace/main/loaders/'));
   const loader=buyerLoadstring(sku,key);
   assert.match(loader,/game:HttpGet\(/);
