@@ -43,20 +43,20 @@ Each bundle requires ALL component SKUs to satisfy live verification, payload an
 
 ## Release configuration
 
-For the owner-authorized six-script rollout on the **existing** Render service, use these explicit release switches. No product or purchaser data needs to be migrated:
+For the first rollout on the **existing** Render service, all six products are enabled in the seller-only **live** test pilot. Do not expose public Checkout until Stripe's own customer-facing business contact information is corrected and the seller accepts the remaining per-product release risks. No product or purchaser data needs to be migrated:
 
 ```ini
 LIVE_VERIFIED_SKUS=control-center,str-grinder,end-grinder,dex-desktop,dex-mobile,fps-optimizer
 LIVE_ZFLAG_VERIFIED=0
-LIVE_BUYER_TEST_ONLY=0
-LIVE_PUBLIC_SALES_APPROVED=1
+LIVE_BUYER_TEST_ONLY=1
+LIVE_PUBLIC_SALES_APPROVED=0
 ```
 
-Maintain all existing payment, webhook, database, licensing, email, and payload secrets/keys. Production readiness must continue to require `ALLOW_LIVE_SALES=1`, `LIVE_DATABASE_CONFIRMED=1`, a ready Stripe merchant account, approved sender, valid signed webhook, and six verified sealed script payloads. Do not turn off any server-side gate.
+After the seller updates Stripe Dashboard → Settings → Public business information to set the official BL Scripts support email, reviews the support phone/address, and checks a new Stripe receipt, public rollout can be authorized by explicitly changing LIVE_BUYER_TEST_ONLY=0 and LIVE_PUBLIC_SALES_APPROVED=1. None of those changes can be inferred from successfully buying FPS Optimizer with the seller's own card. Maintain all existing payment, webhook, database, licensing, email, and payload secrets/keys. Production readiness must continue to require `ALLOW_LIVE_SALES=1`, `LIVE_DATABASE_CONFIRMED=1`, a ready Stripe merchant account, approved sender, valid signed webhook, and six verified sealed script payloads. Do not turn off any server-side gate.
 
 ## Post-release checks
 
 - Confirm production log includes authorized live Stripe, merchant ready, six of six protected payload integrity, and checkout READY.
-- Fetch `GET /api/store` without a login; all six products and all three eligible bundles must have `unavailable:false`, while ZFLAG and Class S must remain unavailable.
-- Confirm a new buyer must sign in and check out through Stripe before receiving a license. No unauthorized card transactions should be initiated by operators to prove this.
+- During the seller-only pilot, `/api/store` can advertise the six product and three bundle items, but non-allowlisted users must be blocked from initiating live Stripe Checkout. ZFLAG and Class S must remain unavailable.
+- Confirm a seller allowlisted account can see all six individual items and three bundles, with payments requiring Stripe. A non-allowlisted user must be blocked from launching live Stripe checkout. No unauthorized card transactions should be initiated by operators to prove this.
 - Track purchases, missing order confirmations, refunds, and support requests. New client compatibility failures must be reflected in catalog gating promptly.
