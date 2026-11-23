@@ -77,7 +77,7 @@ test('Postgres insert failure triggers rollback and returns client to pool',asyn
 test('HTTP paid-license route uses transaction helper before returning loadstring',()=>{
  const src=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(src,/await rotateLicenseAtomically\(\{pool,sqlite,userId:req\.user\.id,sku,/);
- assert.match(src,/tokenHash:sha\(key\),at:now\(\)/);
+ assert.match(src,/tokenHash:sha\(key\),at:now\(\),maxKeysPerWeek:3/);
  assert.match(src,/if\(!await entitlementIsPaid\(req\.user\.id,sku\)\)/);
  assert.doesNotMatch(src,/await query\('UPDATE licenses SET revoked_at=\$1 WHERE user_id=\$2/);
 });

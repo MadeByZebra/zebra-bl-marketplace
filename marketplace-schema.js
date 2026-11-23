@@ -15,6 +15,9 @@ export const marketplaceSchema=[
  `CREATE TABLE IF NOT EXISTS purchases (session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payment_intent TEXT, created_at BIGINT NOT NULL, paid_at BIGINT)`,
  `CREATE TABLE IF NOT EXISTS licenses (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), sku TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, created_at BIGINT NOT NULL, revoked_at BIGINT, last_used_at BIGINT)`,
  `CREATE UNIQUE INDEX IF NOT EXISTS licenses_one_active_per_product ON licenses (user_id,sku) WHERE revoked_at IS NULL`,
+ // Created on existing Neon databases at startup. Excluded from the original one-time
+ // Render->Neon migration manifest: it did not exist on the legacy source.
+ `CREATE TABLE IF NOT EXISTS license_network_bindings (license_id TEXT PRIMARY KEY REFERENCES licenses(id), network_hash TEXT NOT NULL, first_seen_at BIGINT NOT NULL, last_seen_at BIGINT NOT NULL, blocked_attempts INTEGER NOT NULL DEFAULT 0)`,
  `CREATE TABLE IF NOT EXISTS purchase_notifications (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), sent_at BIGINT NOT NULL)`,
  `CREATE TABLE IF NOT EXISTS free_promo_redemptions (user_id TEXT PRIMARY KEY REFERENCES users(id), sku TEXT NOT NULL, session_id TEXT UNIQUE NOT NULL, created_at BIGINT NOT NULL, redeemed_at BIGINT)`,
  `CREATE TABLE IF NOT EXISTS order_feedback (session_id TEXT PRIMARY KEY REFERENCES purchases(session_id), user_id TEXT NOT NULL REFERENCES users(id), rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5), comment TEXT NOT NULL DEFAULT '', created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL)`
