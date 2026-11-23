@@ -508,15 +508,16 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
    freeReservation=await reserveFreePromo(req.user.id,sku);
    if(!freeReservation)return res.status(409).json({error:'This account already has a free-promotion reservation or redemption. Each account may claim one free order.'});
   }
+  const checkoutTheme=req.body?.theme==='light'?'light':'dark';
   const sessionData={
    mode:'payment',customer_email:req.user.email,client_reference_id:req.user.id,
    line_items:[{price_data:{currency:'usd',unit_amount:quote.free?item.price:quote.total,
       product_data:{name:item.title,description:item.description.slice(0,400)}},quantity:1}],
-   metadata:{sku,user_id:req.user.id,promo_code:quote.code||'',free_promo:quote.free?'v1':'no'},
+   metadata:{sku,user_id:req.user.id,promo_code:quote.code||'',free_promo:quote.free?'v1':'no',checkout_theme:checkoutTheme},
    success_url:`${SITE.origin}/order/?session_id={CHECKOUT_SESSION_ID}`,
    cancel_url:`${SITE.origin}/checkout/?sku=${encodeURIComponent(sku)}&canceled=1`,
    expires_at:Math.floor(Date.now()/1000)+60*60,
-   branding_settings:checkoutBrandingForTheme(req.body?.theme)
+   branding_settings:checkoutBrandingForTheme(checkoutTheme)
   };
   if(quote.free){
    const coupon=await ensureFreeCoupon();
@@ -527,6 +528,9 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
    sessionData.payment_intent_data={metadata:{sku,user_id:req.user.id,promo_code:quote.code||''}};
   }
   const session=await stripe.checkout.sessions.create(sessionData,{apiVersion:CHECKOUT_BRANDING_API_VERSION});
+  // Log only non-sensitive appearance diagnostics: never log email, key or session URL.
+  if(session.branding_settings?.background_color?.toLowerCase()!==sessionData.branding_settings.background_color.toLowerCase())
+   console.warn('Stripe Checkout did not return the requested '+checkoutTheme+' background. Check hosted branding and deployment version.');
   unfinishedSessionId=session.id;
   await query('INSERT INTO purchases (session_id,user_id,sku,amount,status,created_at) VALUES ($1,$2,$3,$4,$5,$6)',[session.id,req.user.id,sku,quote.total,'pending',now()]);
   if(freeReservation){
