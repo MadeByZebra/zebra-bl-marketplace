@@ -48,7 +48,7 @@ test('customer support forms and footer contacts stay directly accessible',()=>{
  assert.match(support,/id="zebra-support-form"/);
  assert.doesNotMatch(support,/Compose in Gmail|mailto:|@gmail\.com/);
   assert.match(support,/id="zebra-support-form"/);
- assert.match(support,/Use default email app/);
+ assert.match(support,/customer-support chat in the lower corner/);
  const terms=read('public/terms/index.html');
  assert.match(terms,/email Zebra Support/);
 });
