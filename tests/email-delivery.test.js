@@ -107,7 +107,7 @@ test('shop purchase confirmation uses official business contact and not a buyer 
  const m=receiptEmail({
   name:'FPS Optimizer',totalCents:199,orderId:'cs_live_demo',
   storeUrl:'https://zebra-bl-marketplace.onrender.com',
-  supportEmail:'zebrablshopofficial@gmail.com',
+  supportEmail:'support-fixture@example.com',
   receiptUrl:'https://pay.stripe.com/receipts/demo'
  });
  assert.match(m,/Questions\? Contact BL Scripts Support: zebrablshopofficial@gmail\.com/);
