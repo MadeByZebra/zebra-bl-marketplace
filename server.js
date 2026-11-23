@@ -24,6 +24,7 @@ import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.
 import {stripeKeyMode,stripeKeyType} from './stripe-key-mode.js';
 import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
 import {rotateLicenseAtomically} from './license-rotation.js';
+import {hashedNetwork,authorizeNetwork} from './license-network-binding.js';
 import {reconcilePendingPurchases} from './purchase-reconciliation.js';
 import { sandboxEmails, isSandboxTester, mayCheckoutSandbox, mayDeliverSandboxScript } from './stripe-sandbox.js';
 import { buyerLoadstring } from './github-loader.js';
@@ -638,8 +639,8 @@ app.post('/api/license/:sku',licenseLimiter,requireUser,async(req,res)=>{
   if(!await entitlementIsPaid(req.user.id,sku))return res.status(403).json({error:'Verified purchase required. No license was issued.'});
   const key='ZBL_'+randomBytes(28).toString('hex');
   await rotateLicenseAtomically({pool,sqlite,userId:req.user.id,sku,
-   licenseId:randomUUID(),tokenHash:sha(key),at:now()});
-  res.json({loadstring:buyerLoadstring(sku,key),note:'The raw GitHub link is a public, license-only bootstrap. Your full script is delivered privately by Zebra’s Shop after verified ownership. This personal command contains your key; rotating it revokes the previous one.'});
+   licenseId:randomUUID(),tokenHash:sha(key),at:now(),maxKeysPerWeek:3});
+  res.json({loadstring:buyerLoadstring(sku,key),note:'One active network per private license when protection is enabled. Your first launch claims that network. If you change networks, generate a new key in My Library; the old one stops working. You can receive up to three keys per seven days per product.'});
  }catch(e){safeError(res,e);}
 });
 // Runtime licenses do not use browser cookies. Every delivery verifies the paid account.
@@ -649,6 +650,14 @@ app.get('/api/loader/:sku',loaderLimiter,licenseLoaderLimiter,async(req,res)=>{
  try{
   const found=(await query('SELECT * FROM licenses WHERE token_hash=$1 AND sku=$2 AND revoked_at IS NULL',[sha(key),sku]))[0];
   if(!found||!await entitlementIsPaid(found.user_id,sku))return res.sendStatus(403);
+  // Privacy: server hashes the trusted request network and never stores a raw IP.
+  // This is a best-effort network lease, not a tamperproof hardware ID.
+  if(process.env.ENFORCE_LICENSE_NETWORK_BINDING==='1'){
+   const networkHash=hashedNetwork(req.ip,found.id);
+   if(!networkHash)return res.status(403).type('text/plain').send('Could not verify the active installation network.');
+   const allowed=await authorizeNetwork({pool,sqlite,licenseId:found.id,networkHash,at:now()});
+   if(!allowed)return res.status(403).type('text/plain').send('This license is already used on another network. Sign in to My Library and generate a replacement key.');
+  }
   const item=products.find(p=>p.id===sku);
   if(!hasSealed(SCRIPT_DIR,item.file))return res.sendStatus(503);
   const payload=readVerifiedScript(SCRIPT_DIR,item.file,PAYLOAD_MANIFEST);
