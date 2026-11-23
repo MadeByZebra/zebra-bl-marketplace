@@ -40,7 +40,7 @@ test('library shows owned products, paid orders and per-product licensed output'
  assert.match(js,/navigator\.clipboard\.writeText\(area\.value\)/);
  assert.match(js,/Download \.txt/);
  assert.match(js,/window\.confirm\(/);
- assert.match(js,/Any previously issued key for this product will stop working/);
+ assert.match(js,/this REVOKES the previous command even if it works/);
  assert.match(js,/\/api\/receipt\//);
  assert.match(js,/\/order\/\?session_id=/);
  assert.doesNotMatch(js,/localStorage|sessionStorage/);
