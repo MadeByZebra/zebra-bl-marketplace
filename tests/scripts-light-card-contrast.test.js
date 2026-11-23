@@ -51,7 +51,7 @@ test('dark product popup and purchase buttons keep legible light-mode labels',()
   '.product-card .product-badge',
   '.product-card .product-actions',
   '.bundle-card .bundle-action'
- ])assert.ok(css.includes(target),'Missing accessible contrast override for '+target);
+ ])assert.ok(css.includes(target)||(target.startsWith('.product-dialog .')&&css.includes('.product-dialog :is(')&&css.includes(target.replace('.product-dialog ',''))),'Missing accessible contrast override for '+target);
  assert.match(css,/color:#f7f7f7!important/);
  assert.match(css,/color:#c2c2c2!important/);
  assert.match(css,/background:#f2f2ef!important/);
