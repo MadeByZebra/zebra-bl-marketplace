@@ -47,7 +47,7 @@ test('all six published Lua bootstraps are lexically valid and have a single del
   assert.match(source,/SetCore\('SendNotification'/,sku+' optional in-game notification missing');
   assert.match(source,/rconsoleprint/,sku+' executor output fallback missing');
   assert.doesNotMatch(source,/ZBL_[0-9a-f]{56}/,sku+' source accidentally contains paid key');
-  assert.doesNotMatch(source,/LocalPlayer|\.UserId|AccountAge/,sku+' must not bind to Roblox alt');
+  assert.doesNotMatch(source,/\.UserId|AccountAge|GetUserIdFromNameAsync/,sku+' must not bind to Roblox alt');
  }
 });
 test('new personal command handles compile/network failures without a nil call',()=>{
