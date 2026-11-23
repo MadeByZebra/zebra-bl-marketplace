@@ -102,3 +102,19 @@ test('sandbox purchase confirmation never pretends real payment was taken',()=>{
  assert.match(m,/Simulated amount: \$18\.00 USD/);
  assert.doesNotMatch(m,/Paid: /);
 });
+
+test('shop purchase confirmation uses official business contact and not a buyer or seller login address',()=>{
+ const m=receiptEmail({
+  name:'FPS Optimizer',totalCents:199,orderId:'cs_live_demo',
+  storeUrl:'https://zebra-bl-marketplace.onrender.com',
+  supportEmail:'zebrablshopofficial@gmail.com',
+  receiptUrl:'https://pay.stripe.com/receipts/demo'
+ });
+ assert.match(m,/Questions\? Contact BL Scripts Support: zebrablshopofficial@gmail\.com/);
+ assert.match(m,/Official Stripe receipt:/);
+ assert.match(m,/Paid: \$1\.99 USD/);
+ const fallback=receiptEmail({name:'Test',totalCents:199,orderId:'test',
+  storeUrl:'https://example.com',supportEmail:'bad\nheader'});
+ assert.match(fallback,/Questions\? Visit https:\/\/example\.com\/support\//);
+ assert.doesNotMatch(fallback,/bad\nheader/);
+});

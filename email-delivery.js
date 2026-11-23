@@ -85,7 +85,7 @@ export async function sendShopEmail({to,subject,text,html,idempotencyKey,replyTo
  }
  return {accepted:true,provider:type};
 }
-export function receiptEmail({name,totalCents,orderId,storeUrl,receiptUrl,testMode=false}){
+export function receiptEmail({name,totalCents,orderId,storeUrl,receiptUrl,supportEmail,testMode=false}){
  const price='$'+(Number(totalCents)/100).toFixed(2);
  const safeTitle=String(name||'your purchase').slice(0,160);
  const lines=[
@@ -99,6 +99,9 @@ export function receiptEmail({name,totalCents,orderId,storeUrl,receiptUrl,testMo
   String(storeUrl).replace(/\/$/,'')+'/account/'
  ];
  if(receiptUrl&&/^https:\/\//.test(receiptUrl))lines.push('Official Stripe receipt: '+receiptUrl);
- lines.push('','If you did not make this purchase, please contact support.','This is an order confirmation, not a tax invoice.');
+ const shopContact=typeof supportEmail==='string'&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(supportEmail.trim())?supportEmail.trim():null;
+ lines.push('',shopContact?'Questions? Contact BL Scripts Support: '+shopContact:'Questions? Visit '+String(storeUrl).replace(/\/$/,'')+'/support/',
+   'If you did not make this purchase, please contact the shop directly.',
+   'This is an order confirmation, not a tax invoice.');
  return lines.join('\n');
 }

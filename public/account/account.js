@@ -88,7 +88,7 @@
       if(product.kind==='download'){
         controls.append(link('/api/injector/download','Download installer ↗'));
       }else{
-        const generate=element('button','Generate loadstring ↗','btn');
+        const generate=element('button','Generate / replace loadstring ↗','btn');
         generate.type='button';
         const result=element('section',undefined,'commerce-loader-card');
         result.hidden=true;
@@ -105,7 +105,7 @@
         actions.append(copy,download);
         result.append(label,explanation,area,actions,feedback);
         generate.addEventListener('click',async()=>{
-          if(!window.confirm('Generate a new personal loadstring for '+product.title+'? Any previously issued key for this product will stop working.'))return;
+          if(!window.confirm('Generate a NEW personal loadstring for '+product.title+'? IMPORTANT: this REVOKES the previous command even if it works. If you already have your newest command saved, press Cancel and use it instead. You do not have to buy again.'))return;
           generate.disabled=true;
           feedback.textContent='Verifying your purchase and rotating your private license…';
           feedback.classList.remove('error');
@@ -115,7 +115,7 @@
             area.value=data.loadstring;
             result.hidden=false;
             generate.textContent='Rotate license ↗';
-            feedback.textContent='Personal loadstring ready. Your previous key was revoked.';
+            feedback.textContent='New personal command ready. Save/copy THIS version; every older version is now invalid. Run it in-game to get an activation code.';
             alert('Personal loader created for '+product.title+'. Keep it private.');
           }catch(error){
             feedback.classList.add('error');feedback.textContent=error.message;
@@ -145,9 +145,16 @@
         });
         // Buyer approval happens in this signed-in browser, never in Roblox.
         const pairing=element('section',undefined,'commerce-loader-card commerce-device-pairing');
-        const heading=element('strong','APPROVE THIS INSTALLATION');
+        const heading=element('strong','ACTIVATE YOUR PURCHASED INSTALLATION');
         heading.className='commerce-eyebrow';
-        const pairHelp=element('p','Run your newest personal loadstring in-game. If it asks for an activation code, enter that 10-character code here. Only you can approve it through your paid account. You can use multiple Roblox alts on the approved installation.','commerce-muted');
+        const pairHelp=element('p','The 10-character activation code is NOT emailed and does NOT appear automatically in My Library. It is displayed in your Roblox executor console/output only after you run your newest personal loadstring. Enter the code below within 10 minutes. Your main and alt accounts can use the same approved installation.','commerce-muted');
+        const steps=element('ol',undefined,'commerce-activation-steps');
+        for(const message of [
+          'Use your saved newest personal loadstring. Only click Generate / replace if you lost it, because generating again revokes the old key.',
+          'Run that command in-game. Open your executor console/output and look for “Zebra installation activation required” followed by a 10-character code.',
+          'Copy the code into the box below, choose Approve installation, then run the SAME personal loadstring again.'
+        ])steps.append(element('li',message));
+        const noCode=element('p','No code showing? Check the executor output for an error, confirm that you used the newest command, and contact Support if the loader cannot run. Never post your license key or code publicly.','commerce-muted');
         const form=element('form',undefined,'commerce-form');
         const codeLabel=element('label','Activation code (10 characters)');
         const codeInput=element('input');
@@ -158,7 +165,7 @@
         codeInput.spellcheck=false;codeInput.setAttribute('autocapitalize','characters');
         const pairButton=element('button','Approve installation ↗','btn primary');
         pairButton.type='submit';
-        const pairFeedback=element('p','','account-status');pairFeedback.setAttribute('role','status');
+        const pairFeedback=element('p',undefined,'account-status commerce-activation-feedback');pairFeedback.setAttribute('role','status');
         form.append(codeLabel,codeInput,pairButton);
         form.addEventListener('submit',async event=>{
           event.preventDefault();pairButton.disabled=true;
@@ -168,12 +175,12 @@
             if(!/^[A-F0-9]{10}$/.test(code))throw new Error('Enter the 10-character code shown in your game console.');
             const result=await api('/api/approve-device/'+encodeURIComponent(sku),
               {method:'POST',body:JSON.stringify({code})});
-            pairFeedback.textContent=result.message||'Installation approved. Run the same personal loadstring again.';
+            pairFeedback.textContent=result.message||'Approved! Run the SAME newest personal loadstring in-game again.';
             codeInput.value='';
           }catch(error){pairFeedback.textContent='Approval failed: '+error.message;}
           finally{pairButton.disabled=false;}
         });
-        pairing.append(heading,pairHelp,form,pairFeedback);
+        pairing.append(heading,steps,pairHelp,form,noCode,pairFeedback);
         // Buyer-facing status only. Server never exposes raw IPs or fingerprints.
         const checkStatus=element('button','Check license security ↗','btn');
         checkStatus.type='button';
@@ -186,7 +193,7 @@
             const available=Math.max(0,details.max_keys_per_7_days-details.keys_issued_last_7_days);
             securityNote.textContent=(details.issued
               ?details.device_approval_enabled
-                ?details.device_approved?'Active: installation approved. Roblox alt accounts on this installation can use your product.':'Device activation pending. Run newest loader and approve its code.'
+                ?details.device_approved?'Active: installation approved. Your main and alt Roblox accounts can use the newest loadstring on this installation.':'Activation still pending. Run your newest personal loadstring in-game to see the 10-character code in the executor output, then approve it here.'
                 :details.network_bound?'Active: one network locked to this license.':'Issued: first use will bind your network.'
               :'No personal license issued yet.')+
               ' Replacement keys available in the next seven-day window: '+available+'.'+
