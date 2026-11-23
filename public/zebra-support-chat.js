@@ -149,6 +149,9 @@
       if(panelMotion!==animation)return;
       panelMotion=null;
       if(!entering&&!opened){panel.hidden=true;panel.classList.remove('is-closing');}
+      // Remove WAAPI fill after the final frame: prevent accumulating
+      // animations when a visitor opens and closes chat repeatedly.
+      animation.cancel();
     };
   }
   async function open(){
