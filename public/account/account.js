@@ -94,7 +94,7 @@
         result.hidden=true;
         const label=element('strong','PERSONAL LOADSTRING — KEEP PRIVATE');
         label.className='commerce-eyebrow';
-        const explanation=element('p','Creating another key disables the previous one. Do not send your personal loadstring to others.','commerce-muted');
+        const explanation=element('p','Your first run binds this key to one network. A replacement key resets the installation and revokes the old key. Limit: three keys per seven days per product. Do not share your license.','commerce-muted');
         const area=element('textarea');
         area.readOnly=true;area.spellcheck=false;
         area.setAttribute('aria-label',product.title+' private loadstring');
@@ -143,8 +143,27 @@
             feedback.textContent='Saved to your computer. Keep this file private.';
           }finally{setTimeout(()=>URL.revokeObjectURL(url),1000);}
         });
-        controls.append(generate);
-        row.append(result);
+        // Buyer-facing status only. Server never exposes raw IPs or fingerprints.
+        const checkStatus=element('button','Check license security ↗','btn');
+        checkStatus.type='button';
+        const securityNote=element('p','','account-status');
+        checkStatus.addEventListener('click',async()=>{
+          checkStatus.disabled=true;
+          securityNote.textContent='Checking your current license…';
+          try{
+            const details=await api('/api/license-status/'+encodeURIComponent(sku));
+            const available=Math.max(0,details.max_keys_per_7_days-details.keys_issued_last_7_days);
+            securityNote.textContent=(details.issued
+              ?details.network_bound?'Active: one network locked to this license.':'Issued: first use will bind your network.'
+              :'No personal license issued yet.')+
+              ' Replacement keys available in the next seven-day window: '+available+'.'+
+              (details.blocked_network_attempts>0?' Blocked other-network requests: '+details.blocked_network_attempts+'.':'')+
+              (!details.protection_enabled?' Network protection is not yet enabled.':'');
+          }catch(err){securityNote.textContent='Could not retrieve license status: '+err.message;}
+          finally{checkStatus.disabled=false;}
+        });
+        controls.append(generate,checkStatus);
+        row.append(result,securityNote);
       }
       row.prepend(info);
       const output=row.querySelector('.commerce-loader-card');
