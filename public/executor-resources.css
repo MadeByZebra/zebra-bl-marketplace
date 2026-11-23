@@ -1,0 +1,162 @@
+/* ZEBRA / BL SCRIPTS — independent executor-store directory.
+ * Uses the site's true-black and silver design tokens. No third-party logos,
+ * tracking scripts, embeddeds, download files or affiliate links. */
+.scripts-page #executors{
+ position:relative;
+ padding-block:clamp(78px,9vw,132px);
+ background:#000;
+ border-block:1px solid rgba(255,255,255,.075);
+ scroll-margin-top:96px;
+}
+.scripts-page #executors .exec-section-inner{position:relative;z-index:1}
+.scripts-page #executors .exec-topline{
+ display:flex;align-items:center;justify-content:space-between;gap:16px;
+ margin-bottom:27px;
+}
+.scripts-page #executors .exec-eyebrow{
+ color:#a2a2a2;letter-spacing:.19em;text-transform:uppercase;
+ font:600 11px/1.6 'Geist Mono',ui-monospace,monospace;
+}
+.scripts-page #executors .exec-topline-note{
+ display:inline-flex;gap:9px;align-items:center;white-space:nowrap;
+ border:1px solid #333;border-radius:999px;padding:8px 13px;
+ font:550 10px/1 'Geist Mono',ui-monospace,monospace;color:#bababa;
+ letter-spacing:.06em;
+}
+.scripts-page #executors .exec-topline-note::before{
+ content:'';width:6px;height:6px;flex:none;border-radius:50%;
+ background:#f2f2f2;box-shadow:0 0 10px #888;
+}
+.scripts-page #executors .exec-lead{text-align:center;max-width:800px;margin:0 auto 46px}
+.scripts-page #executors .exec-lead h2{
+ color:#fff!important;letter-spacing:-.062em;font-weight:650;
+ font-size:clamp(45px,7.5vw,91px)!important;line-height:.99!important;
+ margin:0 0 18px;
+}
+.scripts-page #executors .exec-lead h2 span{color:#9f9f9f}
+.scripts-page #executors .exec-lead p{
+ color:#a4a4a4!important;max-width:660px;margin:0 auto;
+ font:450 clamp(14px,1.7vw,17px)/1.8 'Geist',system-ui,sans-serif;
+}
+.scripts-page #executors .exec-store-grid{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:17px;margin:0;align-items:stretch;
+}
+.scripts-page #executors .exec-store-card{
+ min-width:0;min-height:352px;display:flex;flex-direction:column;
+ overflow:hidden;position:relative;background:#090909;
+ border:1px solid #292929;border-radius:17px;
+ transition:border-color .28s ease,transform .28s cubic-bezier(.2,.75,.2,1),box-shadow .28s ease;
+}
+.scripts-page #executors .exec-store-card:hover,
+.scripts-page #executors .exec-store-card:focus-within{
+ border-color:#757575;
+ transform:translateY(-5px);
+ box-shadow:0 15px 36px rgba(0,0,0,.34),0 0 0 1px rgba(255,255,255,.025);
+}
+.scripts-page #executors .exec-store-art{
+ position:relative;height:142px;overflow:hidden;
+ background:radial-gradient(ellipse at 84% 7%,#1a1a1a 0%,#090909 58%,#060606 100%);
+ border-bottom:1px solid #252525;
+ isolation:isolate;
+ display:flex;align-items:center;padding:24px;
+}
+.scripts-page #executors .exec-store-art::before{
+ content:'';position:absolute;inset:-35%;
+ background:repeating-linear-gradient(116deg,transparent 0 31px,rgba(255,255,255,.035) 32px 33px,transparent 34px 66px);
+ transform:translateX(12%);
+ transition:transform .6s ease;pointer-events:none;
+}
+.scripts-page #executors .exec-store-card:hover .exec-store-art::before{transform:translateX(-4%)}
+.scripts-page #executors .exec-watermark{
+ position:absolute;right:-14px;top:-40px;
+ width:144px;height:144px;opacity:.13;
+ background:url('/assets/zebra-z-mark.svg?v=1') center / contain no-repeat;
+ transform:rotate(-15deg);filter:grayscale(1);pointer-events:none;
+}
+.scripts-page #executors .exec-store-art strong{
+ position:relative;z-index:1;max-width:90%;
+ color:#f8f8f8;font:750 clamp(22px,2.6vw,30px)/1 'Geist',system-ui,sans-serif;
+ letter-spacing:-.045em;overflow-wrap:anywhere;text-transform:uppercase;
+ text-shadow:0 1px 18px #000;
+}
+.scripts-page #executors .exec-store-art .exec-art-counter{
+ position:absolute;right:18px;bottom:13px;
+ font:600 10px/1 'Geist Mono',ui-monospace,monospace;color:#737373;
+}
+.scripts-page #executors .exec-store-body{
+ display:flex;flex:1;flex-direction:column;padding:21px 22px 22px;gap:0;
+}
+.scripts-page #executors .exec-store-body-top{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.scripts-page #executors .exec-store-body h3{
+ font:650 19px/1.2 'Geist',system-ui,sans-serif;letter-spacing:-.04em;
+ color:#fafafa;margin:0;
+}
+.scripts-page #executors .exec-external-pill{
+ display:inline-flex;flex:none;gap:6px;align-items:center;
+ font:600 9px/1 'Geist Mono',ui-monospace,monospace;
+ text-transform:uppercase;letter-spacing:.06em;
+ color:#b7b7b7;border:1px solid #393939;border-radius:999px;
+ padding:6px 9px;
+}
+.scripts-page #executors .exec-store-domain{
+ margin:10px 0 12px;
+ color:#858585!important;overflow-wrap:anywhere;
+ font:500 12px/1.35 'Geist Mono',ui-monospace,monospace;
+}
+.scripts-page #executors .exec-store-description{
+ margin:0 0 24px;color:#aaa!important;
+ font:400 13px/1.55 'Geist',system-ui,sans-serif;
+}
+.scripts-page #executors .exec-store-link{
+ display:flex;align-items:center;justify-content:center;gap:12px;
+ width:100%;min-height:45px;padding:10px 16px;margin-top:auto;
+ background:#f4f4f4;color:#090909!important;
+ font:650 13px/1.3 'Geist',system-ui,sans-serif;
+ border:1px solid #e8e8e8;border-radius:10px;
+ transition:background .2s ease,transform .2s ease;
+ text-decoration:none!important;
+}
+.scripts-page #executors .exec-store-link:hover{background:#dcdcdc;transform:translateY(-1px)}
+.scripts-page #executors .exec-store-link:focus-visible{
+ outline:3px solid #fff;outline-offset:3px;
+}
+.scripts-page #executors .exec-store-link span{font-size:17px;line-height:1}
+.scripts-page #executors .exec-disclaimer{
+ display:flex;align-items:flex-start;gap:15px;margin:27px 0 0;padding:18px 19px;
+ background:#090909;border:1px solid #292929;border-radius:13px;
+}
+.scripts-page #executors .exec-disclaimer-icon{
+ display:grid;place-items:center;flex:none;width:28px;height:28px;
+ border:1px solid #555;color:#efefef;border-radius:7px;
+ font:650 14px 'Geist Mono',ui-monospace,monospace;
+}
+.scripts-page #executors .exec-disclaimer p{
+ margin:0;color:#a7a7a7!important;font:450 12px/1.75 'Geist',system-ui,sans-serif;
+}
+.scripts-page #executors .exec-disclaimer strong{color:#e8e8e8}
+.scripts-page #executors .exec-disclaimer a{
+ color:#eee!important;text-decoration:underline;text-underline-offset:3px;
+}
+@media(max-width:990px){
+ .scripts-page #executors .exec-store-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .scripts-page #executors .exec-store-card{min-height:325px}
+}
+@media(max-width:630px){
+ .scripts-page #executors .exec-topline{flex-wrap:wrap}
+ .scripts-page #executors .exec-lead{text-align:left;margin:0 0 32px}
+ .scripts-page #executors .exec-lead p{margin:0}
+ .scripts-page #executors .exec-store-grid{grid-template-columns:1fr;gap:13px}
+ .scripts-page #executors .exec-store-card{min-height:0}
+ .scripts-page #executors .exec-store-art{height:108px}
+ .scripts-page #executors .exec-store-body{padding:18px}
+ .scripts-page #executors .exec-store-description{margin-bottom:19px}
+ .scripts-page #executors .exec-disclaimer{padding:14px;gap:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .scripts-page #executors .exec-store-card,
+ .scripts-page #executors .exec-store-art::before,
+ .scripts-page #executors .exec-store-link{transition:none!important;transform:none!important}
+}
