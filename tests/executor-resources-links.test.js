@@ -51,7 +51,7 @@ test('executor directory is easy to navigate from homepage, main/mobile nav and 
  assert.match(scripts,/id="executors"/);
  const jumpLinks=[...scripts.matchAll(/href="#executors"/g)];
  assert.ok(jumpLinks.length>=4,'desktop nav, mobile nav, FAQ and footer anchor expected');
- assert.match(home,/href="\/scripts\/#executors">Need an executor\?/);
+ assert.match(home,/href="\/scripts\/#executors"[^>]*>Need an executor\?/);
  assert.match(home,/href="\/scripts\/#executors">Executor stores/);
  assert.match(scripts,/href="\/executor-resources\.css\?v=20261123-v1"/);
 });
