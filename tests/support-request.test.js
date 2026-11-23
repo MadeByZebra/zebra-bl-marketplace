@@ -45,12 +45,12 @@ test('shop email supports reply-to without changing fixed recipient',async()=>{
   sent=JSON.parse(options.body);
   return {ok:true,status:201};
  };
- const env={BREVO_API_KEY:'test-provider-key-not-real',BREVO_FROM_EMAIL:'zebrablshopofficial@gmail.com',BREVO_FROM_NAME:"Zebra's Shop"};
- const ret=await sendShopEmail({to:'zebrablshopofficial@gmail.com',replyTo:'customer@example.com',
+ const env={BREVO_API_KEY:'test-provider-key-not-real',BREVO_FROM_EMAIL:'support-fixture@example.com',BREVO_FROM_NAME:"Zebra's Shop"};
+ const ret=await sendShopEmail({to:'support-fixture@example.com',replyTo:'customer@example.com',
    subject:'Test customer support',text:'Customer support request',env,fetchImpl});
  assert.equal(ret.accepted,true);
- assert.equal(sent.to[0].email,'zebrablshopofficial@gmail.com');
- assert.equal(sent.sender.email,'zebrablshopofficial@gmail.com');
+ assert.equal(sent.to[0].email,'support-fixture@example.com');
+ assert.equal(sent.sender.email,'support-fixture@example.com');
  assert.equal(sent.replyTo.email,'customer@example.com');
 });
 
