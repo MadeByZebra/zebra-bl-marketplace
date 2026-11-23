@@ -12,7 +12,7 @@ const routes=[
 test('smooth motion styles and interactions load on all public shop pages without removing brand layer',()=>{
  for(const name of routes){
   const s=read(name);
-  assert.match(s,/href="\/brand\.css\?v=20261123(?:a|-permanent1)"/,name);
+  assert.match(s,/href="\/brand\.css\?v=20261123(?:a|-permanent1|-all6)"/,name);
   assert.match(s,/href="\/zebra-motion\.css\?v=20261123a"/,name);
   assert.match(s,/src="\/zebra-motion\.js\?v=20261123a" defer/,name);
   const css=s.indexOf('/brand.css'),motion=s.indexOf('/zebra-motion.css');
@@ -70,7 +70,7 @@ test('mobile dropdown retains Escape and outside dismissal, and support answers 
  assert.match(js,/event\.key==='Escape'/);
  assert.match(js,/button\.setAttribute\('aria-expanded','false'\)/);
  assert.match(css,/\.scripts-page \.mobile-nav\.show/);
- assert.match(html,/restricted live checkout pilot/);
+ assert.match(html,/six BL Scripts products and eligible bundles/);
  assert.match(html,/Roblox alt accounts/);
  assert.doesNotMatch(html,/<strong>Stripe Sandbox<\/strong> checkout is a simulation, not a real charge\. Public sales remain disabled/);
 });

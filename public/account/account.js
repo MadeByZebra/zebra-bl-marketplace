@@ -54,6 +54,14 @@
     $('authHint').textContent='We’ll send a six-digit, single-use code. No password required.';
     $('loginCode').value='';
   }
+  const productTips=Object.freeze({
+    'control-center':'BL Control Center: run your personal loadstring after Roblox is fully loaded. Its modular settings open inside the game. Installation approval is needed once per approved setup.',
+    'str-grinder':'STR Grinder: this tool currently works in Class A only. Join Class A before running. If auto-execute starts before you enter Class A, rerun the same saved command after joining; you do NOT need another activation code.',
+    'end-grinder':'END Grinder: Class A only. Enter Class A before starting push-mat training. Supported auto-execute setups reuse the same command and approval; you may need to rerun after joining Class A.',
+    'dex-desktop':'DEX Desktop: use a supported desktop Roblox client, select BOX1, BOX2 or BOX3 in the in-game controls, then start training. One approved installation works across your Roblox accounts.',
+    'dex-mobile':'DEX Mobile: use a compatible mobile executor with working persistent file storage, then select your bag using the floating controls. Executor compatibility varies; approval remains attached to the local installation.',
+    'fps-optimizer':'FPS Optimizer: run after joining the game. It simplifies visual effects and may change visual quality. It does not guarantee an FPS increase.'
+  });
   function renderLibrary(owned,catalog,orders=[]){
     const container=$('libraryItems');
     container.replaceChildren();
@@ -110,7 +118,8 @@
         copy.type='button';download.type='button';
         const feedback=element('p',undefined,'account-alert');
         actions.append(copy,download);
-        result.append(label,explanation,area,actions,feedback);
+        const tip=element('p',productTips[sku]||'Follow the product’s compatibility notes before running.','commerce-product-setup-tip');
+        result.append(label,explanation,tip,area,actions,feedback);
         let generating=false;
         let currentInfo=null;
         const showGenerationMessage=(message,isError=false)=>{
@@ -295,7 +304,8 @@
           finally{checkStatus.disabled=false;}
         });
         controls.append(view,generate,checkStatus);
-        row.append(generationStatus,result,approvedStatus,pairing,securityNote);
+        const setupNote=element('p',productTips[sku]||'Keep your current purchased command private.','commerce-product-setup-tip');
+        row.append(setupNote,generationStatus,result,approvedStatus,pairing,securityNote);
       }
       row.prepend(info);
       const output=row.querySelector('.commerce-generation-status')||row.querySelector('.commerce-loader-card');

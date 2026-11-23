@@ -58,5 +58,5 @@ test('the account, checkout and order HTML pages bypass stale caches',()=>{
  assert.match(server,/\['account','order','checkout'\]\.some/);
  assert.match(server,/filePath\.endsWith\(path\.join\('public',dir,'index\.html'\)\)/);
  assert.match(server,/'no-store, max-age=0'/);
- assert.match(html,/account\.js\?v=20261123-permanent1/);
+ assert.match(html,/account\.js\?v=20261123-all6/);
 });
