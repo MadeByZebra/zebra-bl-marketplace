@@ -21,6 +21,7 @@ import {webhookSecretFor,configuredWebhookSecret} from './webhook-environments.j
 import {verifiedLiveProduct,liveReleaseReadiness} from './live-sales-release-gates.js';
 import {liveBuyerAllowed} from './live-checkout-buyers.js';
 import {checkoutOrderPrefix,checkoutOrderMatchesMode} from './stripe-order-mode.js';
+import {CHECKOUT_BRANDING_API_VERSION,checkoutBrandingForTheme} from './checkout-branding.js';
 import {stripeKeyMode,stripeKeyType} from './stripe-key-mode.js';
 import {retryPendingPurchaseEmails} from './purchase-email-retry.js';
 import {rotateLicenseAtomically,LicenseRotationLimitError} from './license-rotation.js';
@@ -514,7 +515,8 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
    metadata:{sku,user_id:req.user.id,promo_code:quote.code||'',free_promo:quote.free?'v1':'no'},
    success_url:`${SITE.origin}/order/?session_id={CHECKOUT_SESSION_ID}`,
    cancel_url:`${SITE.origin}/checkout/?sku=${encodeURIComponent(sku)}&canceled=1`,
-   expires_at:Math.floor(Date.now()/1000)+60*60
+   expires_at:Math.floor(Date.now()/1000)+60*60,
+   branding_settings:checkoutBrandingForTheme(req.body?.theme)
   };
   if(quote.free){
    const coupon=await ensureFreeCoupon();
@@ -524,7 +526,7 @@ app.post('/api/checkout',checkoutLimiter,requireUser,async(req,res)=>{
   }else{
    sessionData.payment_intent_data={metadata:{sku,user_id:req.user.id,promo_code:quote.code||''}};
   }
-  const session=await stripe.checkout.sessions.create(sessionData);
+  const session=await stripe.checkout.sessions.create(sessionData,{apiVersion:CHECKOUT_BRANDING_API_VERSION});
   unfinishedSessionId=session.id;
   await query('INSERT INTO purchases (session_id,user_id,sku,amount,status,created_at) VALUES ($1,$2,$3,$4,$5,$6)',[session.id,req.user.id,sku,quote.total,'pending',now()]);
   if(freeReservation){
